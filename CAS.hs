@@ -6,16 +6,16 @@ module CAS where
 import Language.Haskell.TH
 import Language.Haskell.TH.Quote
 
-import Language.Haskell.Meta (parseExp, parseDecs, parsePat)
-import Language.Haskell.Meta.Utils (pretty)
 import Language.Haskell.TH.Lib
 import Language.Haskell.TH.Quote
 import Language.Haskell.TH.Syntax
+import GHC.Num
 
 data Value =
-   V String
- | C Double
+   V Name
+ | C Rational
  | CI Integer
+ | Neg Value
  | Value :^: Value
  | Value :*: Value
  | Value :+: Value
@@ -41,7 +41,8 @@ data Value =
  | Pi
  | Sqrt Value
  | Diff Value Value
- deriving (Show,Read,Eq)
+ | Other Exp
+ deriving (Show,Eq)
 
 instance Num Value where
   fromInteger a = CI (fromIntegral a)
@@ -100,20 +101,21 @@ diff a b = error $ "can not parse : " ++ show a ++ " ##  " ++ show b
 diff' a b = simp $ diff a b
 
 integrate :: Value -> Value -> Value
--- integrate (V x') (V y') | x' == y' = 
---                         | otherwise = CI 0
 integrate (x :+: y) z = (integrate x z) + (integrate y z)
 integrate (a@(CI _) :*: y) z = a * integrate y z
 integrate (a@(C _) :*: y) z = a * integrate y z
 integrate (CI a) z = (CI a) * z
 integrate (C a) z = (C a) * z
 --integrate (z :^: CI n) z = (x ** (fromIntegral (n-1))) * (integrate x z)
-integrate (Sin x') y' = (Cos x') * (integrate x' y')
-integrate (Cos x') y' = (Sin x') * (integrate x' y')
-
-integrate (CI _) _ = CI 0
-integrate (C _) _ = CI 0
-integrate (Log x') y' = recip x' * integrate x' y'
+integrate (Sin x') y' | x' == y' = Cos x'
+                      | otherwise = error "can not parse"
+integrate (Cos x') y' | x' == y' = -1 * Sin x'
+                      | otherwise = error "can not parse"
+integrate (x :^: CI 2) y | x == y    = x ** 3 / 3
+                         | otherwise = error "can not parse"
+integrate (x :^: CI n) y | x == y    = (x :^: (CI (n+1))) / (fromIntegral (n+1))
+                         | otherwise = error "can not parse"
+integrate (x :^: CI n) z = (fromIntegral n) * (x ** (fromIntegral (n-1))) * (diff x z)
 
 integrate a b = error $ "can not parse : " ++ show a ++ " ##  " ++ show b
 
@@ -167,122 +169,87 @@ simp (x :/: y) =
 
 simp a = a
 
+exp2val :: Exp -> Value
 
-simp :: Value -> Value
-simp (C a :+: C b) = C (a+b)
-simp (CI a :+: CI b) = CI (a+b)
-simp (x :+: C 0) = simp x
-simp (x :+: CI 0) = simp x
-simp (C 0 :+: x) = simp x
-simp (CI 0 :+: x) = simp x
-simp (x :+: y) = 
-  case (simp x,simp y) of
-    (CI 0,CI 0) -> CI 0
-    (CI 0,y') -> y'
-    (x',CI 0) -> x'
-    (x',y') -> x' :+: y'
-    
-simp (C a :*: C b) = C (a*b)
-simp (CI a :*: CI b) = CI (a*b)
-simp (_ :*: C 0) = CI 0
-simp (x :*: C 1) = simp x
-simp (_ :*: CI 0) = CI 0
-simp (x :*: CI 1) = simp x
-simp (C 0 :*: _) = CI 0
-simp (C 1 :*: x) = simp x
-simp (CI 0 :*: _) = CI 0
-simp (CI 1 :*: x) = simp x
-simp (x :*: y) =
-  case (simp x,simp y) of
-    (CI 0,_) -> CI 0
-    (_ ,CI 0) -> CI 0
-    (x',y') -> x' :*: y'
+exp2val (InfixE (Just a) (VarE op) (Just b))
+  | op == '(+) = exp2val a + exp2val b
+  | op == '(-) = exp2val a - exp2val b
+  | op == '(*) = exp2val a * exp2val b
+  | op == '(/) = exp2val a / exp2val b
+  | op == '(**) = exp2val a ** exp2val b
+  | otherwise = error "can not parse"
 
+exp2val (AppE (VarE fun) a)
+  | fun ==  'log = Log $ exp2val a
+  | fun ==  'sqrt = Sqrt $ exp2val a
+  | fun ==  'exp = Exp $ exp2val a
+  | fun ==  'sin = Sin $ exp2val a
+  | fun ==  'cos = Cos $ exp2val a
+  | fun ==  'tan = Tan $ exp2val a
+  | fun ==  'asin = Asin $ exp2val a
+  | fun ==  'acos = Acos $ exp2val a
+  | fun ==  'atan = Atan $ exp2val a
+  | fun ==  'sinh = Sinh $ exp2val a
+  | fun ==  'cosh = Cosh $ exp2val a
+  | fun ==  'tanh = Tanh $ exp2val a
+  | fun ==  'asinh = Asinh $ exp2val a
+  | fun ==  'acosh = Acosh $ exp2val a
+  | fun ==  'atanh = Atanh $ exp2val a
+  | fun ==  'negate = Neg $ exp2val a
+  | otherwise = error "can not parse"
+exp2val (LitE (IntegerL a)) = CI a
+exp2val (LitE (RationalL a)) = C a
+exp2val (VarE a) | a == 'pi = Pi
+                 | otherwise = V a
 
-simp (C a :/: C b) = C (a/b)
---simp (CI a :/: CI b) = CI (a/b)
-simp (_ :/: C 0) = error "divide by 0"
-simp (x :/: C 1) = simp x
-simp (_ :/: CI 0) = error "divide by 0"
-simp (x :/: CI 1) = simp x
-simp (C 0 :/: _) = CI 0
-simp (C 1 :/: x) = CI 1 :/: simp x
-simp (CI 0 :/: _) = CI 0
-simp (CI 1 :/: x) = CI 1 :/: simp x
-simp (x :/: y) =
-  case (simp x,simp y) of
-    (CI 0,_) -> CI 0
-    (_ ,CI 0) -> error "divide by 0"
-    (x',y') -> x' :/: y'
+val2exp :: Value -> Exp
+val2exp (a :+: b) = (InfixE (Just (val2exp a)) (VarE '(+)) (Just (val2exp b)))
+val2exp (a :-: b) = (InfixE (Just (val2exp a)) (VarE '(-)) (Just (val2exp b)))
+val2exp (a :*: b) = (InfixE (Just (val2exp a)) (VarE '(*)) (Just (val2exp b)))
+val2exp (a :/: b) = (InfixE (Just (val2exp a)) (VarE '(/)) (Just (val2exp b)))
+val2exp (a :^: b) = (InfixE (Just (val2exp a)) (VarE '(**)) (Just (val2exp b)))
 
-simp a = a
-
-
-
---expr =  [|1+1|]
--- multi :: Name -> ExpQ
--- multi n = [| ($(varE n) *) |]
-
--- main :: IO ()
--- main = do
---   let x :: Value
---       x = V "x"
---       y :: Value
---       y = V "y"
---       -- z :: Value
---       -- z = V "y"
---       v = (x ** 3) + x * y + 3 :: Value
---   print v
---   -- let a = 3
---   --     b =  $(multi 'a) 3
---   -- print $ b
--- dif :: QuasiQuoter
--- dif = QuasiQuoter {
---   quoteExp = 
---   }
-
-isPrime :: (Integral a) => a -> Bool
-isPrime k | k <=1 = False | otherwise = not $ elem 0 (map (mod k)[2..k-1])
-
-nextPrime :: (Integral a) => a -> a
-nextPrime n | isPrime n = n | otherwise = nextPrime (n+1)
-
-doPrime :: (Integral a) => a -> a -> [a]
-doPrime n m
-     | curr > m = []
-     | otherwise = curr:doPrime (curr+1) m
-     where curr = nextPrime n
-
-primeQ :: Int -> Int -> Q Exp
-primeQ n m = [| doPrime n m |]
+val2exp (Log a) = (AppE (VarE 'log) (val2exp a))
+val2exp (Sqrt a) = (AppE (VarE 'sqrt) (val2exp a))
+val2exp (Exp a) = (AppE (VarE 'exp) (val2exp a))
+val2exp (Cos a) = (AppE (VarE 'cos) (val2exp a)) 
+val2exp (Tan a) = (AppE (VarE 'tan) (val2exp a))
+val2exp (Asin a) = (AppE (VarE 'asin) (val2exp a))
+val2exp (Acos a) = (AppE (VarE 'acos) (val2exp a))
+val2exp (Atan a) = (AppE (VarE 'atan) (val2exp a))
+val2exp (Sinh a) = (AppE (VarE 'sinh) (val2exp a))
+val2exp (Cosh a) = (AppE (VarE 'cosh) (val2exp a))
+val2exp (Tanh a) = (AppE (VarE 'tanh) (val2exp a))
+val2exp (Asinh a) = (AppE (VarE 'asinh) (val2exp a))
+val2exp (Acosh a) = (AppE (VarE 'acosh) (val2exp a))
+val2exp (Atanh a) = (AppE (VarE 'atanh) (val2exp a))
+val2exp (Neg a) = (AppE (VarE 'negate) (val2exp a))
 
 
-hs :: QuasiQuoter
-hs =  QuasiQuoter {
- quoteExp = (either fail return . parseExp)
--- quoteDec = (either fail return . parseDecs)
- -- , quoteExp = either fail transformE . parseExp
-  }
+val2exp (CI a) = LitE (IntegerL a)
+val2exp (C a) = LitE (RationalL a)
+val2exp Pi = VarE 'pi
+val2exp (V a) = VarE $ a
 
-hogeQ :: Q [Dec]
-hogeQ = runQ [d| hoge x y = x + y |]
+diffe :: Q Exp -> Q Exp -> Q Exp
+diffe expr val = do
+  e <- expr
+  runIO $ writeFile "hoge1.txt" $ show e
+  v <- val
+  runIO $ writeFile "hoge2.txt" $ show v
+  let b = diff' (exp2val e) (exp2val v)
+  runIO $ writeFile "hoge4.txt" $ show b
+  let a =  val2exp b
+  runIO $ writeFile "hoge3.txt" $ show a
+  return a
 
--- hogeQ' :: String -> Value -> Q [Dec]
--- hogeQ' func val = runQ [hs| hoge x y = x + y |]
+stre :: Q Exp -> Q Exp
+stre expr = do
+  v <- expr
+  stringE $ show v
 
--- hogeQ'' :: String -> Q [Dec]
--- hogeQ'' val =
---   let h = hs val
---   in runQ [h| dummy |]
+strv :: Q Exp -> Q Exp
+strv expr = do
+  v <- expr
+  stringE $ show $ exp2val v
 
-
--- hogeQ :: Q [Dec]
--- hogeQ = runQ [d| hoge x y = x + y |]
-
---share :: [[EntityDef] -> Q [Dec]] -> [EntityDef] -> Q [Dec]
---share fs x = fmap mconcat $ mapM ($ x) fs
-
-heredoc :: QuasiQuoter
-heredoc = QuasiQuoter {
- quoteExp = stringE
- }
