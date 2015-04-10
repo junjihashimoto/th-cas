@@ -84,8 +84,8 @@ diff (x :+: y) z = (diff x z) + (diff y z)
 diff (x :-: y) z = (diff x z) - (diff y z)
 diff (x :*: y) z = (diff x z) * y + x * (diff y z)
 diff (x :/: y) z = ((diff x z) * y - x * (diff y z)) / (y * y)
-diff (x :^: CI 2) z = x * (diff x z)
-diff (x :^: CI n) z = (x ** (fromIntegral (n-1))) * (diff x z)
+diff (x :^: CI 2) z = 2 * x * (diff x z)
+diff (x :^: CI n) z = (fromIntegral n) * (x ** (fromIntegral (n-1))) * (diff x z)
 diff (Sin x') y' = (Cos x') * (diff x' y')
 diff (Cos x') y' = -1 * (Sin x') * (diff x' y')
 diff (Exp x') y' = (Exp x') * (diff x' y')
@@ -96,6 +96,8 @@ diff Pi _ = CI 0
 diff (Log x') y' = recip x' * diff x' y'
 
 diff a b = error $ "can not parse : " ++ show a ++ " ##  " ++ show b
+
+diff' a b = simp $ diff a b
 
 integrate :: Value -> Value -> Value
 -- integrate (V x') (V y') | x' == y' = 
@@ -114,6 +116,56 @@ integrate (C _) _ = CI 0
 integrate (Log x') y' = recip x' * integrate x' y'
 
 integrate a b = error $ "can not parse : " ++ show a ++ " ##  " ++ show b
+
+
+simp :: Value -> Value
+simp (C a :+: C b) = C (a+b)
+simp (CI a :+: CI b) = CI (a+b)
+simp (x :+: C 0) = simp x
+simp (x :+: CI 0) = simp x
+simp (C 0 :+: x) = simp x
+simp (CI 0 :+: x) = simp x
+simp (x :+: y) = 
+  case (simp x,simp y) of
+    (CI 0,CI 0) -> CI 0
+    (CI 0,y') -> y'
+    (x',CI 0) -> x'
+    (x',y') -> x' :+: y'
+    
+simp (C a :*: C b) = C (a*b)
+simp (CI a :*: CI b) = CI (a*b)
+simp (_ :*: C 0) = CI 0
+simp (x :*: C 1) = simp x
+simp (_ :*: CI 0) = CI 0
+simp (x :*: CI 1) = simp x
+simp (C 0 :*: _) = CI 0
+simp (C 1 :*: x) = simp x
+simp (CI 0 :*: _) = CI 0
+simp (CI 1 :*: x) = simp x
+simp (x :*: y) =
+  case (simp x,simp y) of
+    (CI 0,_) -> CI 0
+    (_ ,CI 0) -> CI 0
+    (x',y') -> x' :*: y'
+
+
+simp (C a :/: C b) = C (a/b)
+--simp (CI a :/: CI b) = CI (a/b)
+simp (_ :/: C 0) = error "divide by 0"
+simp (x :/: C 1) = simp x
+simp (_ :/: CI 0) = error "divide by 0"
+simp (x :/: CI 1) = simp x
+simp (C 0 :/: _) = CI 0
+simp (C 1 :/: x) = CI 1 :/: simp x
+simp (CI 0 :/: _) = CI 0
+simp (CI 1 :/: x) = CI 1 :/: simp x
+simp (x :/: y) =
+  case (simp x,simp y) of
+    (CI 0,_) -> CI 0
+    (_ ,CI 0) -> error "divide by 0"
+    (x',y') -> x' :/: y'
+
+simp a = a
 
 
 simp :: Value -> Value
@@ -229,3 +281,8 @@ hogeQ = runQ [d| hoge x y = x + y |]
 
 --share :: [[EntityDef] -> Q [Dec]] -> [EntityDef] -> Q [Dec]
 --share fs x = fmap mconcat $ mapM ($ x) fs
+
+heredoc :: QuasiQuoter
+heredoc = QuasiQuoter {
+ quoteExp = stringE
+ }

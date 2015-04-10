@@ -26,8 +26,8 @@ hogedec x y = hogeQ
 --func :: Double -> Double -> Double
 --func x y = [dif|(x ** 3) + x * y + 3|]
 
-hogeQ' :: String -> Value -> Q [Dec]
-hogeQ' func val = runQ [hs| hoge x y = x + y |]
+--hogeQ' :: String -> Value -> Q [Dec]
+--hogeQ' func val = runQ [hs| hoge x y = x + y |]
 
 main :: IO ()
 main = do
@@ -39,10 +39,7 @@ main = do
       -- z = V "y"
       v = (x ** 3) + x * y + 3 :: Value
       b = 3
+  print [heredoc|1+2|]
   print $(primeQ 0 67)
---  print hoge
   print v
-  print $( return (InfixE (Just (LitE (IntegerL 1))) (VarE (mkName "+")) (Just (LitE (IntegerL 2)))))
-  -- let a = 3
-  --     b =  $(multi 'a) 3
-  -- print $ b
+  print $ diff' v x
