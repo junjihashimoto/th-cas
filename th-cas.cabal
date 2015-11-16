@@ -2,7 +2,7 @@ name:                th-cas
 version:             0.1.0
 synopsis:            Compile-time CAS(Computer Algebra System)
 description:         Compile-time CAS(Computer Algebra System)
-homepage:            https://github/junjihashimoto/th-cas
+homepage:            https://github.com/junjihashimoto/th-cas
 license:             MIT
 license-file:        LICENSE
 author:              Junji Hashimoto
