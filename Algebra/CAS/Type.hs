@@ -36,7 +36,7 @@ data Value =
  | Sqrt Value
  | Diff Value Value
  | Other Exp
- deriving (Show,Eq)
+ deriving (Show,Eq,Ord)
 
 instance Num Value where
   fromInteger a = CI (fromIntegral a)
