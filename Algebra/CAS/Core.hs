@@ -1,9 +1,12 @@
 {-#LANGUAGE TemplateHaskell#-}
 {-#LANGUAGE QuasiQuotes#-}
+{-#LANGUAGE OverloadedStrings#-}
 
 module Algebra.CAS.Core where
 
 import Language.Haskell.TH
+import qualified Language.Haskell.TH.Ppr as P
+import qualified Data.Text as T
 import Algebra.CAS.Type
 
 exp2val :: Exp -> Value
@@ -80,3 +83,4 @@ lift2 a b c = val2exp $ a (exp2val b) (exp2val c)
 lift3 ::  (Value -> Value -> Value -> Value) -> Exp -> Exp -> Exp -> Exp
 lift3 a b c d = val2exp $ a (exp2val b) (exp2val c) (exp2val d)
 
+prettyPrint var = T.unpack $ T.replace "GHC.Num." "" $ T.pack $ show $ P.ppr $ val2exp var

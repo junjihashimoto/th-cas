@@ -1,20 +1,18 @@
+{-#LANGUAGE StandaloneDeriving#-}
 {-#LANGUAGE TemplateHaskell#-}
 {-#LANGUAGE QuasiQuotes#-}
+{-#LANGUAGE CPP#-}
 
 module Algebra.CAS.Type where
 
 import Language.Haskell.TH
+import Data.String
 
 data Value =
-   V Name
+   CI Integer
  | C Rational
- | CI Integer
+ | V Name
  | Neg Value
- | Value :^: Value
- | Value :*: Value
- | Value :+: Value
- | Value :-: Value
- | Value :/: Value
  | Sin Value
  | Cos Value
  | Tan Value
@@ -36,7 +34,18 @@ data Value =
  | Sqrt Value
  | Diff Value Value
  | Other Exp
+ | Value :^: Value
+ | Value :*: Value
+ | Value :+: Value
+ | Value :-: Value
+ | Value :/: Value
  deriving (Show,Eq,Ord)
+
+#if MIN_VERSION_template_haskell(2,10,0)
+#else
+deriving instance Ord Exp
+#endif
+
 
 instance Num Value where
   fromInteger a = CI (fromIntegral a)
@@ -71,5 +80,8 @@ instance Floating Value where
   atanh = Atanh
   acosh = Acosh
 
-val :: String -> Value
+
+instance IsString Value where
+  fromString = val
+
 val v = V (mkName v)

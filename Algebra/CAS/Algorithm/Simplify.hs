@@ -7,6 +7,7 @@ import Algebra.CAS.Type
 import Data.List
 
 simpConst :: Value -> Value
+simpConst (Neg v) = CI (-1) :*: simpConst v
 simpConst (C a :+: C b) = C (a+b)
 simpConst (CI a :+: CI b) = CI (a+b)
 simpConst (x :+: C 0) = simpConst x
@@ -53,11 +54,23 @@ simpConst (x :/: y) =
     (_ ,CI 0) -> error "divide by 0"
     (x',y') -> x' :/: y'
 
+simpConst c@(V a :*: V b) | a == b = V a :^: CI 2
+                          | otherwise = c
+
+simpConst e@((V a :^: CI b) :*: V c) | a ==  c = V a :^: CI (b+1)
+                                     | otherwise = e
+
+simpConst e@(V a :*: (V b :^: CI c) ) | a ==  b = V a :^: CI (c+1)
+                                      | otherwise = e
+
+simpConst e@((V a :^: CI b) :*: (V c :^: CI d) ) | a ==  c = V a :^: CI (b+d)
+                                                 | otherwise = e
+
 simpConst a = a
 
 
-simpPoly ::  Value ->  Value
-simpPoly val =
+simpAddPoly ::  Value ->  Value
+simpAddPoly val =
   let vals :: [[Value]]
       vals = map destructMult $ destructAdd  val
       vals' ::  [ValueWithConst]
@@ -73,7 +86,7 @@ simpLoop func val =
      else simpLoop func v'
 
 simp ::  Value -> Value
-simp = (simpLoop simpConst).simpPoly.(simpLoop simpConst)
+simp = (simpLoop simpConst).simpAddPoly.(simpLoop simpConst)
 
 destructAdd ::  Value -> [Value]
 destructAdd (x :+: y) = destructAdd x ++ destructAdd y
