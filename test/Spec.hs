@@ -4,46 +4,41 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# OPTIONS_GHC -fno-warn-orphans -ddump-splices #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 import Test.Hspec
+import Test.Hspec.QuickCheck
 import Algebra.CAS
 import qualified Algebra.CAS.TH as TH
-import Language.Haskell.TH.Ppr
-import Language.Haskell.TH.Lib
-import Language.Haskell.TH.Syntax
-import Language.Haskell.TH.Quote
 
 main :: IO ()
 main = hspec $ do
   describe "th-diff" $ do
-    it "diff(x+1,x)" $ do
-      let x = error ""
-      $(TH.diff [|x+1|] [|x|]) `shouldBe` 1
-    it "diff(x^2+x+1,x)" $ do
-      let x = 3
-      $(TH.diff [|x*x+1+x|] [|x|]) `shouldBe` (2*x + 1)
-    it "diff(diff(x^3+x+1,x)+x,x)" $ do
-      let x = 3
-      $(TH.diff [|$(TH.diff [|x*x*x+1+x|] [|x|]) + x|] [|x|])  `shouldBe` (6*x+1)
-    it "diff(x+y*x,x)" $ do
-      let x = 3
-          y = 100
-      $(TH.diff [|x+x*x*y|] [|x|])  `shouldBe` (2*x*y+1)
+    prop "diff(x+1,x)" $ \(x :: Int) -> 
+      $(TH.diff [|x+1|] [|x|]) ==  1
+    prop "diff(x^2+x+1,x)" $ \(x :: Int) -> 
+      $(TH.diff [|x*x+1+x|] [|x|]) == (2*x + 1)
+    prop "diff(diff(x^3+x+1,x)+x,x)" $ \(x :: Int) -> 
+      $(TH.diff [|$(TH.diff [|x*x*x+1+x|] [|x|]) + x|] [|x|]) == (6*x+1)
+    prop "diff(x+y*x,x)" $ \((x,y) :: (Int,Int)) -> 
+      $(TH.diff [|x+x*x*y|] [|x|]) == (2*x*y+1)
+    prop "diff(1/sin(x),x)" $ \(x ::  Float) -> 
+      $(TH.diff [|1/sin(x)|] [|x|]) ==  - cos(x)/sin(x)^2
+
   describe "cas" $ do
     it "diff(x+y,x)" $ do
-      let x = "x"
-          y = "y"
+      let x = "x" ::  Value
+          y = "y" ::  Value
       simp (diff (x+y) (x)) `shouldBe` 1
     it "diff(x*x+y,x)" $ do
-      let x = "x"
-          y = "y"
+      let x = "x" ::  Value
+          y = "y" ::  Value
       simp (diff (x*x+y) (x)) `shouldBe` 2*x
     it "destructAdd" $ do
-      let x = "x"
-          y = "y"
+      let x = "x" ::  Value
+          y = "y" ::  Value
       destructAdd (x*x+y+x*y*(3+x)) `shouldBe` [x*x,y,x*y*(3+x)]
     it "simp" $ do
-      let x = "x"
-          y = "y"
+      let x = "x" ::  Value
+          y = "y" ::  Value
       simp (2*y+x+x+y) `shouldBe` 2*x+3*y

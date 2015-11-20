@@ -26,5 +26,5 @@ diff (C _) _ = CI 0
 diff Pi _ = CI 0
 diff (Log x') y' = recip x' * diff x' y'
 
-diff a b = error $ "can not parse : " ++ show a ++ " ##  " ++ show b
+diff a b = error $ "diff //  can not parse : " ++ show a ++ " ##  " ++ show b
 

@@ -8,6 +8,7 @@ module Algebra.CAS.Type where
 import Language.Haskell.TH
 import Data.String
 
+-- | Mathematical expression
 data Value =
    CI Integer
  | C Rational
@@ -80,8 +81,9 @@ instance Floating Value where
   atanh = Atanh
   acosh = Acosh
 
-
 instance IsString Value where
   fromString = val
 
+-- | Lift String to variable of Value
+val ::  String ->  Value
 val v = V (mkName v)
