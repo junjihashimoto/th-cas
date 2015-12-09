@@ -35,7 +35,7 @@ exp2val (AppE (VarE fun) a)
   | fun ==  'asinh = Asinh $ exp2val a
   | fun ==  'acosh = Acosh $ exp2val a
   | fun ==  'atanh = Atanh $ exp2val a
-  | fun ==  'negate = Neg $ exp2val a
+  | fun ==  'negate = neg :*: (exp2val a)
   | otherwise = error "can not parse"
 exp2val (LitE (IntegerL a)) = CI a
 exp2val (LitE (RationalL a)) = C a
@@ -66,10 +66,11 @@ val2exp (Tanh a) = (AppE (VarE 'tanh) (val2exp a))
 val2exp (Asinh a) = (AppE (VarE 'asinh) (val2exp a))
 val2exp (Acosh a) = (AppE (VarE 'acosh) (val2exp a))
 val2exp (Atanh a) = (AppE (VarE 'atanh) (val2exp a))
-val2exp (Neg a) = (AppE (VarE 'negate) (val2exp a))
 
 val2exp (CI a) = LitE (IntegerL a)
 val2exp (C a) = LitE (RationalL a)
+val2exp One = LitE (IntegerL 1)
+val2exp Zero = LitE (IntegerL 0)
 val2exp Pi = VarE 'pi
 val2exp (V a) = VarE $ a
 
@@ -85,4 +86,8 @@ lift3 ::  (Value -> Value -> Value -> Value) -> Exp -> Exp -> Exp -> Exp
 lift3 a b c d = val2exp $ a (exp2val b) (exp2val c) (exp2val d)
 
 prettyPrint ::  Value ->  String
-prettyPrint var = T.unpack $ T.replace "GHC.Num." "" $ T.pack $ show $ P.ppr $ val2exp var
+prettyPrint var = T.unpack $
+                  T.replace "GHC.Num." "" $
+                  T.replace "GHC.Float." "" $
+                  T.replace "GHC.Real." "" $
+                  T.pack $ show $ P.ppr $ val2exp var

@@ -31,6 +31,9 @@ library
 --                     , Algebra.CAS.Algorithm.Expand
                      , Algebra.CAS.Algorithm.Simplify
                      , Algebra.CAS.Algorithm.Integrate
+                     , Algebra.CAS.Algorithm.Gcd
+                     , Algebra.CAS.Algorithm.Fraction
+                     , Algebra.CAS.Algorithm.Solve
                      , Algebra.CAS.TH
   build-depends:       base == 4.*
                      , template-haskell
@@ -63,7 +66,4 @@ test-suite doctests
   main-is:         doctests.hs
   ghc-options:     -Wall -threaded
   build-depends:   base,
-                   doctest,
-                   conduit,
-                   resourcet,
-                   find-conduit
+                   doctest

@@ -17,34 +17,13 @@ import Data.List
 -- >>> prettyPrint $ simpConst $ 3 + 3
 -- "6"
 simpConst :: Value -> Value
-simpConst (Neg v) = CI (-1) :*: simpConst v
-simpConst (C a :+: C b) = C (a+b)
-simpConst (CI a :+: CI b) = CI (a+b)
-simpConst (x :+: C 0) = simpConst x
-simpConst (x :+: CI 0) = simpConst x
-simpConst (C 0 :+: x) = simpConst x
-simpConst (CI 0 :+: x) = simpConst x
-simpConst (x :+: y) = 
-  case (simpConst x,simpConst y) of
-    (CI 0,CI 0) -> CI 0
-    (CI 0,y') -> y'
-    (x',CI 0) -> x'
-    (x',y') -> x' :+: y'
-
-simpConst (C a :-: C b) = C (a-b)
-simpConst (CI a :-: CI b) = CI (a-b)
-simpConst (x :-: C 0) = simpConst x
-simpConst (x :-: CI 0) = simpConst x
-simpConst (C 0 :-: x) = CI (-1) * simpConst x
-simpConst (CI 0 :-: x) = CI (-1) * simpConst x
-simpConst (x :-: y) = 
-  case (simpConst x,simpConst y) of
-    (CI 0,CI 0) -> CI 0
-    (CI 0,y') -> CI (-1) * y'
-    (x',CI 0) -> x'
-    (x',y') -> x' :+: (CI (-1)) * y'
-
-simpConst (C a :*: C b) = C (a*b)
+simpConst (CI 0) = Zero
+simpConst (CI 1) = One
+simpConst (C 0) = Zero
+simpConst (C 1) = One
+simpConst (a :+: b) = simpConst a + simpConst b
+simpConst (a :-: b) = simpConst a - simpConst b
+simpConst (a :*: b) = simpConst a * simpConst b
 simpConst (CI a :*: CI b) = CI (a*b)
 simpConst (_ :*: C 0) = CI 0
 simpConst (x :*: C 1) = simpConst x
@@ -145,10 +124,11 @@ destructMult x = [x]
 -- >>> isConst $ 3.0 * sin(3.0)
 -- True
 isConst :: Value ->  Bool
+isConst Zero = True
+isConst One = True
 isConst (CI _) = True
 isConst (C _) = True
 isConst (V _) = False
-isConst (Neg v) = isConst v
 isConst (Sin v) = isConst v
 isConst (Cos v) = isConst v
 isConst (Tan v) = isConst v
