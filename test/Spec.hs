@@ -29,16 +29,12 @@ main = hspec $ do
     it "diff(x+y,x)" $ do
       let x = "x" ::  Value
           y = "y" ::  Value
-      simp (diff (x+y) (x)) `shouldBe` 1
+      (diff (x+y) (x)) `shouldBe` 1
     it "diff(x*x+y,x)" $ do
       let x = "x" ::  Value
           y = "y" ::  Value
-      simp (diff (x*x+y) (x)) `shouldBe` 2*x
-    it "destructAdd" $ do
-      let x = "x" ::  Value
-          y = "y" ::  Value
-      destructAdd (x*x+y+x*y*(3+x)) `shouldBe` [x*x,y,x*y*(3+x)]
+      (diff (x*x+y) (x)) `shouldBe` 2*x
     it "simp" $ do
       let x = "x" ::  Value
           y = "y" ::  Value
-      simp (2*y+x+x+y) `shouldBe` 2*x+3*y
+      (2*y+x+x+y) `shouldBe` 2*x+3*y

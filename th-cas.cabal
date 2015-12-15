@@ -1,5 +1,5 @@
 name:                th-cas
-version:             0.1.0
+version:             0.2.0
 synopsis:            Compile-time CAS(Computer Algebra System)
 description:         Compile-time CAS(Computer Algebra System)
 homepage:            https://github.com/junjihashimoto/th-cas
@@ -29,11 +29,11 @@ library
 --                     , Algebra.CAS.Algorithm
                      , Algebra.CAS.Algorithm.Diff
 --                     , Algebra.CAS.Algorithm.Expand
-                     , Algebra.CAS.Algorithm.Simplify
-                     , Algebra.CAS.Algorithm.Integrate
-                     , Algebra.CAS.Algorithm.Gcd
-                     , Algebra.CAS.Algorithm.Fraction
-                     , Algebra.CAS.Algorithm.Solve
+--                     , Algebra.CAS.Algorithm.Simplify
+--                     , Algebra.CAS.Algorithm.Integrate
+--                     , Algebra.CAS.Algorithm.Gcd
+--                     , Algebra.CAS.Algorithm.Fraction
+--                     , Algebra.CAS.Algorithm.Solve
                      , Algebra.CAS.TH
   build-depends:       base == 4.*
                      , template-haskell

@@ -20,25 +20,25 @@ exp2val (InfixE (Just a) (VarE op) (Just b))
   | otherwise = error "exp2val // can not parse"
 
 exp2val (AppE (VarE fun) a)
-  | fun ==  'log = Log $ exp2val a
-  | fun ==  'sqrt = Sqrt $ exp2val a
-  | fun ==  'exp = Exp $ exp2val a
-  | fun ==  'sin = Sin $ exp2val a
-  | fun ==  'cos = Cos $ exp2val a
-  | fun ==  'tan = Tan $ exp2val a
-  | fun ==  'asin = Asin $ exp2val a
-  | fun ==  'acos = Acos $ exp2val a
-  | fun ==  'atan = Atan $ exp2val a
-  | fun ==  'sinh = Sinh $ exp2val a
-  | fun ==  'cosh = Cosh $ exp2val a
-  | fun ==  'tanh = Tanh $ exp2val a
-  | fun ==  'asinh = Asinh $ exp2val a
-  | fun ==  'acosh = Acosh $ exp2val a
-  | fun ==  'atanh = Atanh $ exp2val a
-  | fun ==  'negate = neg :*: (exp2val a)
+  | fun ==  'log = S $ Log $ exp2val a
+  | fun ==  'sqrt = S $ Sqrt $ exp2val a
+  | fun ==  'exp = S $ Exp $ exp2val a
+  | fun ==  'sin = S $ Sin $ exp2val a
+  | fun ==  'cos = S $ Cos $ exp2val a
+  | fun ==  'tan = S $ Tan $ exp2val a
+  | fun ==  'asin = S $ Asin $ exp2val a
+  | fun ==  'acos = S $ Acos $ exp2val a
+  | fun ==  'atan = S $ Atan $ exp2val a
+  | fun ==  'sinh = S $ Sinh $ exp2val a
+  | fun ==  'cosh = S $ Cosh $ exp2val a
+  | fun ==  'tanh = S $ Tanh $ exp2val a
+  | fun ==  'asinh = S $ Asinh $ exp2val a
+  | fun ==  'acosh = S $ Acosh $ exp2val a
+  | fun ==  'atanh = S $ Atanh $ exp2val a
+  | fun ==  'negate = C (CI (-1)) * (exp2val a)
   | otherwise = error "can not parse"
-exp2val (LitE (IntegerL a)) = CI a
-exp2val (LitE (RationalL a)) = C a
+exp2val (LitE (IntegerL a)) = C (CI a)
+exp2val (LitE (RationalL a)) = C (CR (fromRational a))
 exp2val (VarE a) | a == 'pi = Pi
                  | otherwise = V a
 
@@ -46,31 +46,31 @@ exp2val a@_ = error $ "exp2val // can not parse:" ++ show a
 
 val2exp :: Value -> Exp
 val2exp (a :+: b) = (InfixE (Just (val2exp a)) (VarE '(+)) (Just (val2exp b)))
-val2exp (a :-: b) = (InfixE (Just (val2exp a)) (VarE '(-)) (Just (val2exp b)))
 val2exp (a :*: b) = (InfixE (Just (val2exp a)) (VarE '(*)) (Just (val2exp b)))
 val2exp (a :/: b) = (InfixE (Just (val2exp a)) (VarE '(/)) (Just (val2exp b)))
 val2exp (a :^: b) = (InfixE (Just (val2exp a)) (VarE '(**)) (Just (val2exp b)))
 
-val2exp (Log a) = (AppE (VarE 'log) (val2exp a))
-val2exp (Sqrt a) = (AppE (VarE 'sqrt) (val2exp a))
-val2exp (Exp a) = (AppE (VarE 'exp) (val2exp a))
-val2exp (Sin a) = (AppE (VarE 'sin) (val2exp a)) 
-val2exp (Cos a) = (AppE (VarE 'cos) (val2exp a)) 
-val2exp (Tan a) = (AppE (VarE 'tan) (val2exp a))
-val2exp (Asin a) = (AppE (VarE 'asin) (val2exp a))
-val2exp (Acos a) = (AppE (VarE 'acos) (val2exp a))
-val2exp (Atan a) = (AppE (VarE 'atan) (val2exp a))
-val2exp (Sinh a) = (AppE (VarE 'sinh) (val2exp a))
-val2exp (Cosh a) = (AppE (VarE 'cosh) (val2exp a))
-val2exp (Tanh a) = (AppE (VarE 'tanh) (val2exp a))
-val2exp (Asinh a) = (AppE (VarE 'asinh) (val2exp a))
-val2exp (Acosh a) = (AppE (VarE 'acosh) (val2exp a))
-val2exp (Atanh a) = (AppE (VarE 'atanh) (val2exp a))
+val2exp (S (Log a)) = (AppE (VarE 'log) (val2exp a))
+val2exp (S (Sqrt a)) = (AppE (VarE 'sqrt) (val2exp a))
+val2exp (S (Exp a)) = (AppE (VarE 'exp) (val2exp a))
+val2exp (S (Sin a)) = (AppE (VarE 'sin) (val2exp a)) 
+val2exp (S (Cos a)) = (AppE (VarE 'cos) (val2exp a)) 
+val2exp (S (Tan a)) = (AppE (VarE 'tan) (val2exp a))
+val2exp (S (Asin a)) = (AppE (VarE 'asin) (val2exp a))
+val2exp (S (Acos a)) = (AppE (VarE 'acos) (val2exp a))
+val2exp (S (Atan a)) = (AppE (VarE 'atan) (val2exp a))
+val2exp (S (Sinh a)) = (AppE (VarE 'sinh) (val2exp a))
+val2exp (S (Cosh a)) = (AppE (VarE 'cosh) (val2exp a))
+val2exp (S (Tanh a)) = (AppE (VarE 'tanh) (val2exp a))
+val2exp (S (Asinh a)) = (AppE (VarE 'asinh) (val2exp a))
+val2exp (S (Acosh a)) = (AppE (VarE 'acosh) (val2exp a))
+val2exp (S (Atanh a)) = (AppE (VarE 'atanh) (val2exp a))
 
-val2exp (CI a) = LitE (IntegerL a)
-val2exp (C a) = LitE (RationalL a)
-val2exp One = LitE (IntegerL 1)
-val2exp Zero = LitE (IntegerL 0)
+val2exp (C (CI a)) = LitE (IntegerL a)
+val2exp (C (CR a)) = LitE (RationalL (toRational a))
+val2exp (C (CF a b)) = LitE (RationalL ((toRational a)/(toRational b)))
+val2exp (C One) = LitE (IntegerL 1)
+val2exp (C Zero) = LitE (IntegerL 0)
 val2exp Pi = VarE 'pi
 val2exp (V a) = VarE $ a
 

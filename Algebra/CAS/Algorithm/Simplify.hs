@@ -113,48 +113,6 @@ destructMult (x :/: y) = destructMult x ++ map (\v ->  CI 1 :/: v) (destructMult
 destructMult x = [x]
 
 
--- | When formula does not include variable,
--- isConst returns True.
--- >>> import Algebra.CAS.Core(prettyPrint)
--- >>> let x = "x" :: Value
--- >>> isConst x
--- False
--- >>> isConst $ sin(x)*3
--- False
--- >>> isConst $ 3.0 * sin(3.0)
--- True
-isConst :: Value ->  Bool
-isConst Zero = True
-isConst One = True
-isConst (CI _) = True
-isConst (C _) = True
-isConst (V _) = False
-isConst (Sin v) = isConst v
-isConst (Cos v) = isConst v
-isConst (Tan v) = isConst v
-isConst (Sinh v) = isConst v
-isConst (Cosh v) = isConst v
-isConst (Tanh v) = isConst v
-isConst (Asin v) = isConst v
-isConst (Acos v) = isConst v
-isConst (Atan v) = isConst v
-isConst (Asinh v) = isConst v
-isConst (Acosh v) = isConst v
-isConst (Atanh v) = isConst v
-isConst (Exp v) = isConst v
-isConst (Log v) = isConst v
-isConst (Abs v) = isConst v
-isConst (Sig v) = isConst v
-isConst (LogBase v0 v1) = isConst v0 &&  isConst v1
-isConst Pi = True
-isConst (Sqrt v) = isConst v
-isConst (Diff v0 v1) = isConst v0 &&  isConst v1
-isConst e@(Other _) = error $ "can not check isConst of " ++ show e
-isConst (v0 :^: v1) = isConst v0 &&  isConst v1
-isConst (v0 :*: v1) = isConst v0 &&  isConst v1
-isConst (v0 :+: v1) = isConst v0 &&  isConst v1
-isConst (v0 :-: v1) = isConst v0 &&  isConst v1
-isConst (v0 :/: v1) = isConst v0 &&  isConst v1
 
 data ValueWithConst =
   ValueWithConst {
