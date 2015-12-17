@@ -8,6 +8,8 @@ module Algebra.CAS.Type where
 import Language.Haskell.TH
 import Data.String
 
+data Equation = Value :=: Value deriving (Show,Eq,Ord)
+
 data Const =
    Zero
  | One
@@ -27,9 +29,14 @@ instance Ord Const where
   compare One (CF a b) = compare 1 (a*b)
   compare One (CR a) = compare 1 a
   compare (CI a) (CI b) = compare a b
-  compare (CI a) (CF b c) = compare (fromIntegral a) (fromIntegral b / fromIntegral c)
+  compare (CI a) (CF b c) =
+    let v = fromIntegral b / fromIntegral c :: Double
+    in compare (fromIntegral a) v
   compare (CI a) (CR b) = compare (fromIntegral a)  b
-  compare (CF a b) (CF c d) = compare (fromIntegral a / fromIntegral b)  (fromIntegral c / fromIntegral d)
+  compare (CF a b) (CF c d) =
+    let v0 = fromIntegral a / fromIntegral b :: Double
+        v1 = fromIntegral c / fromIntegral d :: Double
+    in compare v0 v1
   compare (CF a b) (CR c) = compare (fromIntegral a / fromIntegral b) c
   compare (CR a) (CR b) = compare a b
   compare a b =
@@ -51,7 +58,6 @@ constSimplify (CF a b) | a == b = One
 constSimplify (CR 0) = Zero
 constSimplify (CR 1) = One
 constSimplify a = a
-
 
 instance Num Const where
   fromInteger 0 = Zero
@@ -124,6 +130,49 @@ instance Fractional Const where
     (CR b,CI a) -> constSimplify $ CR (b/fromIntegral a)
     (CR c,CF a b) -> constSimplify $ CR (fromIntegral b /fromIntegral a * c)
 
+instance Enum Const where
+  succ a = a+1
+  pred a = a-1
+  toEnum v = fromIntegral v
+  fromEnum Zero = 0
+  fromEnum One = 1
+  fromEnum (CI a) = fromEnum a
+  fromEnum (CR a) = fromEnum a
+  fromEnum (CF a b) = fromEnum ((fromIntegral a::Double)  / fromIntegral b)
+
+instance Real Const where
+  toRational Zero = toRational (0::Int)
+  toRational One = toRational (1::Int)
+  toRational (CI v) = toRational v
+  toRational (CR v) = toRational v
+  toRational (CF a b) = toRational ((fromIntegral a :: Double) / fromIntegral b)
+
+instance Floating Const where
+  pi = CR pi
+  exp Zero = 1
+  exp a = CR $ exp $ fromRational $ toRational a
+  sqrt a = CR $ sqrt $ fromRational $ toRational a
+  log One = Zero
+  log a = CR $ log $ fromRational $ toRational a
+  (**) _ Zero = 1
+  (**) a One = a
+  (**) a (CI b) = a^b
+  (**) a b = CR $ (fromRational $ toRational a :: Double) ** (fromRational $ toRational b :: Double)
+  logBase a b = CR $ logBase (fromRational $ toRational $ a) (fromRational $ toRational $ b)
+  sin a = CR $ sin $ fromRational $ toRational a
+  tan a = CR $ tan $ fromRational $ toRational a
+  cos a = CR $ cos $ fromRational $ toRational a
+  asin a = CR $ asin $ fromRational $ toRational a
+  atan a = CR $ atan $ fromRational $ toRational a
+  acos a = CR $ acos $ fromRational $ toRational a
+  sinh a = CR $ sinh $ fromRational $ toRational a
+  tanh a = CR $ tanh $ fromRational $ toRational a
+  cosh a = CR $ cosh $ fromRational $ toRational a
+  asinh a = CR $ asinh $ fromRational $ toRational a
+  atanh a = CR $ atanh $ fromRational $ toRational a
+  acosh a = CR $ acosh $ fromRational $ toRational a
+
+
 data SpecialFunction =
    Sin Value
  | Cos Value
@@ -149,10 +198,11 @@ data SpecialFunction =
 
 -- | Mathematical expression
 data Value =
-   C Const
- | Pi
- | V Name
- | S SpecialFunction
+   C Const -- ^ Constant value
+ | Pi      -- ^ Pi
+ | CV Name -- ^ Constant variable which is used to deal variable(V Name) as constant value
+ | V Name  -- ^ Variable
+ | S SpecialFunction  -- ^ Special Functions (sin, cos, exp and etc..)
  | Value :^: Value
  | Value :*: Value
  | Value :+: Value
@@ -161,21 +211,25 @@ data Value =
 
 instance Ord Value where
   compare (C a) (C b) = compare a b
+  compare (C _) Pi = LT
+  compare (C _) (CV _) = LT
   compare (C _) _ = LT
+  compare Pi (CV _) = LT
   compare Pi _ = LT
+  compare (CV _) _ = LT
   compare (V a) (V b) = compare a b
   compare (V _) b@(S _) | isConst b = GT
                         | otherwise = LT
   compare a@(V _) (c@(V _):^:d) | a == c = compare 1 d
                                 | otherwise = compare a c
-  compare (V a) b | isConst b = GT
+  compare (V _) b | isConst b = GT
                   | otherwise = LT
   compare (S a) (S b) = compare a b
   compare (a :*: b) (c :*: d) | b == d = compare a c
                               | otherwise = compare b d
-  compare (a :*: b) c | b == c = GT
+  compare (_ :*: b) c | b == c = GT
                       | otherwise = compare b c
-  compare a (b :*: c) | a == c = LT
+  compare a (_ :*: c) | a == c = LT
                       | otherwise = compare a c
   compare (a :^: b) (c :^: d) | a == c = compare b d
                               | otherwise = compare a c
@@ -185,12 +239,12 @@ instance Ord Value where
                       | otherwise = compare a b
   compare (a :+: b) (c :+: d) | b == d = compare a c
                               | otherwise = compare b d
-  compare (a :+: b) c | b == c = GT
+  compare (_ :+: b) c | b == c = GT
                       | otherwise = compare b c
   compare a (b :+: c) | a == c = LT
                       | otherwise = compare b c
   compare (a :/: b) (c :/: d) = compare (a*d) (c*b)
-  compare (a :/: b) c = compare b (c*b)
+  compare (_ :/: b) c = compare b (c*b)
   compare a (b :/: c) = compare (a*c) b
   compare a b =
     case (isConst a,isConst b) of
@@ -334,6 +388,7 @@ instance Floating Value where
   log (C One) = C Zero
   log a = S $ Log a
   (**) _ (C Zero) = C One
+  (**) (C (CI a)) (C (CI b)) = C (CI (a^b))
   (**) a (C One) = a
   (**) a b = (:^:) a b
   logBase a b = S $ LogBase a b 
@@ -370,35 +425,47 @@ instance Enum Value where
 instance Real Value where
   toRational (C (CI v)) = toRational v
   toRational (C (CR v)) = toRational v
-  toRational Pi = toRational pi
-  toRational (C Zero) = toRational 0
-  toRational (C One) = toRational 1
-  toRational _ = toRational 0
+  toRational Pi = toRational (pi::Double)
+  toRational (C Zero) = toRational (0::Int)
+  toRational (C One) = toRational (1::Int)
+  toRational _ = toRational (0::Int)
+
+
+
 
 instance Integral Value where
   quot a b = fst $ quotRem a b
   rem a b = snd $ quotRem a b
   quotRem a b =
-    case (mva,mvb) of
-    (Just va,Just vb) | va == vb -> quotRem' a b
-                      | otherwise -> error "quotRem does not support multi variable"
-    (Nothing,Nothing) -> (a/b,0)
-    otherwise -> quotRem' a b
-      
+    case quotRemV a b of
+    (S (Abs a),S (Abs b)) -> (a,b)
+    (S (Abs a),b) -> (a,b)
+    (a,S (Abs b)) -> (a,b)
+    (a,b) -> (a,b)
     where
-      (da,mva,ca)=degree a
-      (db,mvb,cb)=degree b
-      divnum = ca/cb
-      vv = case mva of
-        Just va -> (va**(fromIntegral (da-db)))
-        Nothing -> 1
-      rem' = expand $ a - (b*vv*divnum)
-      (div'',rem'') = quotRem rem' b
-      quotRem' a b =
-        if da < db
-        then (0,a)
-        else (expand (div'' + divnum * vv),rem'')
-
+      quotRemV (S (Abs a)) (S (Abs b)) = quotRemV a b
+      quotRemV (S (Abs a)) b = quotRemV a b
+      quotRemV a (S (Abs b)) = quotRemV a b
+      quotRemV a b =
+        case (mva,mvb) of
+        (Just va,Just vb) | va == vb -> quotRem'
+                          | otherwise -> error "quotRem does not support multi variable"
+        (Nothing,Nothing) -> (a/b,0)
+        (_,_) -> quotRem'
+          
+        where
+          (da,mva,ca)=degree a
+          (db,mvb,cb)=degree b
+          divnum = ca/cb
+          vv = case mva of
+            Just va -> (va**(fromIntegral (da-db)))
+            Nothing -> 1
+          rem' = expand $ a - (b*vv*divnum)
+          (div'',rem'') = quotRem rem' b
+          quotRem'  =
+            if da < db
+            then (0,a)
+            else (expand (div'' + divnum * vv),rem'')
 
   div = quot
   mod = rem
@@ -420,9 +487,9 @@ degree a  | isConst a = (0,Nothing,a)
 
 
 converge ::  (Value ->  Value) -> Value -> Value
-converge func val =
-  let v' = func val
-  in if v' ==  val
+converge func v =
+  let v' = func v
+  in if v' ==  v
      then v'
      else converge func v'
 
@@ -444,6 +511,13 @@ gcdV a b | a == C Zero = b
                   gcdV (a `rem` b) b
                 else
                   gcdV a (b `rem` a)
+
+lcmV :: Value -> Value -> Value
+lcmV a b =
+  case lcm a b of
+  (S (Abs v)) -> expand v
+  v -> expand v
+
 
 partialFractionExpansion :: Value -> Maybe Value
 partialFractionExpansion (_:/:_) = Nothing
@@ -467,14 +541,68 @@ toListValue (a:+:b) = Sum $ toList a ++ toList b
       Mul a' -> error ""
 -}
 
-{-
-solver :: Value -> Value -> [Value]
-solver a b =
-  case da of
-  1 -> (a-b*ca)/(-ca)
+--degreeVariable :: Value -> Maybe (Integer,Value)
+--degreeVariable (b:^:(C (CI c))) = Just (c,b)
+--degreeVariable b@(V _) = Just (1,b)
+--degreeVariable _ Nothing
+
+headAdd :: Value -> Value
+headAdd (_ :+: ab) = ab
+headAdd ab = ab
+tailAdd :: Value -> Maybe Value
+tailAdd (a :+: _) = Just a
+tailAdd _ = Nothing
+
+headMul :: Value -> Value
+headMul (_ :*: ab) = ab
+headMul ab = ab
+tailMul :: Value -> Maybe Value
+tailMul (a :*: _) = Just a
+tailMul _ = Nothing
+
+headDiv :: Value -> Value
+headDiv (_ :/: ab) = ab
+headDiv ab = ab
+tailDiv :: Value -> Maybe Value
+tailDiv (a :/: _) = Just a
+tailDiv _ = Nothing
+
+
+subst :: Value -> Value -> Value -> Value
+subst org mod' formula = mapValue func formula
   where
-    (da,mva,ca) = degree a
--}
+    func v = if v == org then mod' else v
+
+mapValue :: (Value -> Value) -> Value -> Value
+mapValue conv a@(C _) = conv a
+mapValue conv a@(CV _) = conv a
+mapValue conv a@Pi = conv a
+mapValue conv a@(V _) = conv a
+mapValue conv (S (Sin v)) = S $ Sin $ mapValue conv v
+mapValue conv (S (Cos v)) = S $ Cos $ mapValue conv v
+mapValue conv (S (Tan v)) = S $ Tan $ mapValue conv v
+mapValue conv (S (Sinh v)) = S $ Sinh $ mapValue conv v
+mapValue conv (S (Cosh v)) = S $ Cosh $ mapValue conv v
+mapValue conv (S (Tanh v)) = S $ Tanh $ mapValue conv v
+mapValue conv (S (Asin v)) = S $ Asin $ mapValue conv v
+mapValue conv (S (Acos v)) = S $ Acos $ mapValue conv v
+mapValue conv (S (Atan v)) = S $ Atan $ mapValue conv v
+mapValue conv (S (Asinh v)) = S $ Asinh $ mapValue conv v
+mapValue conv (S (Acosh v)) = S $ Acosh $ mapValue conv v
+mapValue conv (S (Atanh v)) = S $ Atanh $ mapValue conv v
+mapValue conv (S (Exp v)) = S $ Exp $ mapValue conv v
+mapValue conv (S (Log v)) = S $ Log $ mapValue conv v
+mapValue conv (S (Abs v)) = S $ Abs $ mapValue conv v
+mapValue conv (S (Sig v)) = S $ Sig $ mapValue conv v
+mapValue conv (S (LogBase v1 v2)) = S $ LogBase (mapValue conv v1) (mapValue conv v2)
+mapValue conv (S (Sqrt v)) = S $ Sqrt $ mapValue conv v
+mapValue conv (S (Diff v1 v2)) = S $ Diff (mapValue conv v1) (mapValue conv v2)
+mapValue conv (S (Integrate v1 v2)) = S $ Integrate (mapValue conv v1) (mapValue conv v2)
+mapValue conv (a:^:b) = mapValue conv a ** mapValue conv b
+mapValue conv (a:*:b) = mapValue conv a * mapValue conv b
+mapValue conv (a:+:b) = mapValue conv a + mapValue conv b
+mapValue conv (a:/:b) = mapValue conv a / mapValue conv b
+
 --solver a b = error $ "can not solve: " ++ show a ++ " : " ++ show b
 
 
@@ -490,6 +618,7 @@ solver a b =
 -- True
 isConst :: Value ->  Bool
 isConst (C _) = True
+isConst (CV _) = True
 isConst (V _) = False
 isConst (S (Sin v)) = isConst v
 isConst (S (Cos v)) = isConst v
@@ -516,4 +645,37 @@ isConst (v0 :^: v1) = isConst v0 &&  isConst v1
 isConst (v0 :*: v1) = isConst v0 &&  isConst v1
 isConst (v0 :+: v1) = isConst v0 &&  isConst v1
 isConst (v0 :/: v1) = isConst v0 &&  isConst v1
+
+isVariable :: Value -> Bool
+isVariable = not.isConst
+
+variables :: Value ->  [Value]
+variables (C _) = []
+variables (CV _) = []
+variables a@(V _) = [a]
+variables (S (Sin v)) = variables v
+variables (S (Cos v)) = variables v
+variables (S (Tan v)) = variables v
+variables (S (Sinh v)) = variables v
+variables (S (Cosh v)) = variables v
+variables (S (Tanh v)) = variables v
+variables (S (Asin v)) = variables v
+variables (S (Acos v)) = variables v
+variables (S (Atan v)) = variables v
+variables (S (Asinh v)) = variables v
+variables (S (Acosh v)) = variables v
+variables (S (Atanh v)) = variables v
+variables (S (Exp v)) = variables v
+variables (S (Log v)) = variables v
+variables (S (Abs v)) = variables v
+variables (S (Sig v)) = variables v
+variables (S (LogBase v0 v1)) = variables v0 ++  variables v1
+variables Pi = []
+variables (S (Sqrt v)) = variables v
+variables (S (Diff v0 v1)) = variables v0 ++  variables v1
+variables (S (Integrate v0 v1)) = variables v0 ++  variables v1
+variables (v0 :^: v1) = variables v0 ++  variables v1
+variables (v0 :*: v1) = variables v0 ++  variables v1
+variables (v0 :+: v1) = variables v0 ++  variables v1
+variables (v0 :/: v1) = variables v0 ++  variables v1
 

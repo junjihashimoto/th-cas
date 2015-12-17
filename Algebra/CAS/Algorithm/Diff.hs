@@ -24,6 +24,7 @@ diff (S (Exp x')) y' = (S (Exp x')) * (diff x' y')
 
 diff (C _) _ = C Zero
 diff Pi _ = C Zero
+diff (CV _) _ = C Zero
 diff (S (Log x')) y' = recip x' * diff x' y'
 
 diff a b = error $ "diff //  can not parse : " ++ show a ++ " ##  " ++ show b
