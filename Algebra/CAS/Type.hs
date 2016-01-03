@@ -1,12 +1,102 @@
 {-#LANGUAGE StandaloneDeriving#-}
 {-#LANGUAGE TemplateHaskell#-}
 {-#LANGUAGE QuasiQuotes#-}
+{-#LANGUAGE OverloadedStrings#-}
 {-#LANGUAGE CPP#-}
 
 module Algebra.CAS.Type where
 
 import Language.Haskell.TH
 import Data.String
+import Data.Maybe
+
+import qualified Language.Haskell.TH.Ppr as P
+import qualified Data.Text as T
+--import Algebra.CAS.Type
+
+exp2val :: Exp -> Value
+
+exp2val (InfixE (Just a) (VarE op) (Just b))
+  | op == '(+) = exp2val a + exp2val b
+  | op == '(-) = exp2val a - exp2val b
+  | op == '(*) = exp2val a * exp2val b
+  | op == '(/) = exp2val a / exp2val b
+  | op == '(**) = exp2val a ** exp2val b
+  | otherwise = error "exp2val // can not parse"
+
+exp2val (AppE (VarE fun) a)
+  | fun ==  'log = S $ Log $ exp2val a
+  | fun ==  'sqrt = S $ Sqrt $ exp2val a
+  | fun ==  'exp = S $ Exp $ exp2val a
+  | fun ==  'sin = S $ Sin $ exp2val a
+  | fun ==  'cos = S $ Cos $ exp2val a
+  | fun ==  'tan = S $ Tan $ exp2val a
+  | fun ==  'asin = S $ Asin $ exp2val a
+  | fun ==  'acos = S $ Acos $ exp2val a
+  | fun ==  'atan = S $ Atan $ exp2val a
+  | fun ==  'sinh = S $ Sinh $ exp2val a
+  | fun ==  'cosh = S $ Cosh $ exp2val a
+  | fun ==  'tanh = S $ Tanh $ exp2val a
+  | fun ==  'asinh = S $ Asinh $ exp2val a
+  | fun ==  'acosh = S $ Acosh $ exp2val a
+  | fun ==  'atanh = S $ Atanh $ exp2val a
+  | fun ==  'negate = C (CI (-1)) * (exp2val a)
+  | otherwise = error "can not parse"
+exp2val (LitE (IntegerL a)) = C (CI a)
+exp2val (LitE (RationalL a)) = C (CR (fromRational a))
+exp2val (VarE a) | a == 'pi = Pi
+                 | otherwise = V a
+
+exp2val a@_ = error $ "exp2val // can not parse:" ++ show a
+
+val2exp :: Value -> Exp
+val2exp (a :+: b) = (InfixE (Just (val2exp a)) (VarE '(+)) (Just (val2exp b)))
+val2exp (a :*: b) = (InfixE (Just (val2exp a)) (VarE '(*)) (Just (val2exp b)))
+val2exp (a :/: b) = (InfixE (Just (val2exp a)) (VarE '(/)) (Just (val2exp b)))
+val2exp (a :^: b) = (InfixE (Just (val2exp a)) (VarE '(**)) (Just (val2exp b)))
+
+val2exp (S (Log a)) = (AppE (VarE 'log) (val2exp a))
+val2exp (S (Sqrt a)) = (AppE (VarE 'sqrt) (val2exp a))
+val2exp (S (Exp a)) = (AppE (VarE 'exp) (val2exp a))
+val2exp (S (Sin a)) = (AppE (VarE 'sin) (val2exp a)) 
+val2exp (S (Cos a)) = (AppE (VarE 'cos) (val2exp a)) 
+val2exp (S (Tan a)) = (AppE (VarE 'tan) (val2exp a))
+val2exp (S (Asin a)) = (AppE (VarE 'asin) (val2exp a))
+val2exp (S (Acos a)) = (AppE (VarE 'acos) (val2exp a))
+val2exp (S (Atan a)) = (AppE (VarE 'atan) (val2exp a))
+val2exp (S (Sinh a)) = (AppE (VarE 'sinh) (val2exp a))
+val2exp (S (Cosh a)) = (AppE (VarE 'cosh) (val2exp a))
+val2exp (S (Tanh a)) = (AppE (VarE 'tanh) (val2exp a))
+val2exp (S (Asinh a)) = (AppE (VarE 'asinh) (val2exp a))
+val2exp (S (Acosh a)) = (AppE (VarE 'acosh) (val2exp a))
+val2exp (S (Atanh a)) = (AppE (VarE 'atanh) (val2exp a))
+
+val2exp (C (CI a)) = LitE (IntegerL a)
+val2exp (C (CR a)) = LitE (RationalL (toRational a))
+val2exp (C (CF a b)) = LitE (RationalL ((toRational a)/(toRational b)))
+val2exp (C One) = LitE (IntegerL 1)
+val2exp (C Zero) = LitE (IntegerL 0)
+val2exp Pi = VarE 'pi
+val2exp (V a) = VarE $ a
+
+val2exp a@_ = error $ "val2exp // can not parse:" ++ show a
+
+lift  ::  Value -> Exp
+lift  = val2exp
+lift1 ::  (Value -> Value) -> Exp -> Exp
+lift1 a b = val2exp $ a (exp2val b)
+lift2 ::  (Value -> Value -> Value) -> Exp -> Exp -> Exp
+lift2 a b c = val2exp $ a (exp2val b) (exp2val c)
+lift3 ::  (Value -> Value -> Value -> Value) -> Exp -> Exp -> Exp -> Exp
+lift3 a b c d = val2exp $ a (exp2val b) (exp2val c) (exp2val d)
+
+prettyPrint ::  Value ->  String
+prettyPrint var = T.unpack $
+                  T.replace "GHC.Num." "" $
+                  T.replace "GHC.Float." "" $
+                  T.replace "GHC.Real." "" $
+                  T.pack $ show $ P.ppr $ val2exp var
+
 
 data Equation = Value :=: Value deriving (Show,Eq,Ord)
 
@@ -52,9 +142,13 @@ constSimplify :: Const -> Const
 constSimplify (CI 0) = Zero
 constSimplify (CI 1) = One
 constSimplify (CF 0 _) = Zero
+constSimplify (CF a 1) = (CI a)
+constSimplify (CF a (-1)) = (CI (-a))
 constSimplify (CF a b) | a == b = One
-                       | otherwise = let g = gcd a b
-                                     in CF (a`div`g) (b`div`g)
+                       | otherwise =
+                         case gcd a b of
+                         1 -> CF a b
+                         g -> constSimplify $ CF (a`div`g) (b`div`g)
 constSimplify (CR 0) = Zero
 constSimplify (CR 1) = One
 constSimplify a = a
@@ -116,16 +210,19 @@ instance Fractional Const where
     (Zero,_) -> Zero
     (_,Zero) -> error "DivideByZero"
     (One,One) -> One
+    (One,CI (-1)) -> CI (-1)
     (One,CI a) -> CF 1 a
     (One,CF a b) -> CF b a
     (One,CR a) -> CR (1/a)
-    (CI a,CI b) -> CF a b
+    (CI a,CI (-1)) -> CI (-a)
+    (CI a,CI b) -> constSimplify $ CF a b
     (CI a,CF b c) -> constSimplify $ CF (a*c) b
     (CI a,CR b) -> constSimplify $ CR (fromIntegral a /b)
     (CF a b,CF c d) -> constSimplify $ CF (a*d) (b*c)
     (CF a b,CR c) -> constSimplify $ CR (fromIntegral a /fromIntegral b * c)
     (CR a,CR b) -> constSimplify $ CR (a/b)
     (a,One) -> a
+    (a,CI (-1)) -> -a
     (CF b c,CI a) -> constSimplify $ CF b (a*c)
     (CR b,CI a) -> constSimplify $ CR (b/fromIntegral a)
     (CR c,CF a b) -> constSimplify $ CR (fromIntegral b /fromIntegral a * c)
@@ -207,7 +304,11 @@ data Value =
  | Value :*: Value
  | Value :+: Value
  | Value :/: Value
- deriving (Show,Eq)
+ deriving (Eq)
+
+instance Show Value where
+  show a = prettyPrint a
+
 
 instance Ord Value where
   compare (C a) (C b) = compare a b
@@ -377,6 +478,7 @@ instance Fractional Value where
     (_,C Zero) -> error "divide by zero"
     (C One,b) -> C One :/: b
     (a,C One) -> a
+    (a,C c) -> C (1/c) * a
     (a,b) | a == b -> C One
           | otherwise -> a :/: b
 
@@ -429,8 +531,6 @@ instance Real Value where
   toRational (C Zero) = toRational (0::Int)
   toRational (C One) = toRational (1::Int)
   toRational _ = toRational (0::Int)
-
-
 
 
 instance Integral Value where
@@ -498,6 +598,8 @@ expand ((a:+:b):*:(c:+:d)) = expand (a*c) + expand (b*c) +expand (a*d) +expand (
 expand ((a:+:b):*:c) = expand (a*c) + expand (b*c)
 expand (a:*:(b:+:c)) = expand (a*b) + expand (a*c)
 expand (a:+:b) = expand a + expand b
+expand (a:*:b) = expand a * expand b
+expand (a:/:1) = a
 expand a = a
 
 
@@ -518,10 +620,9 @@ lcmV a b =
   (S (Abs v)) -> expand v
   v -> expand v
 
-
-partialFractionExpansion :: Value -> Maybe Value
-partialFractionExpansion (_:/:_) = Nothing
-partialFractionExpansion _ = Nothing
+--pfe :: Value -> Maybe Value
+--pfe (a:/:(b:*:c) = Nothing
+--pfe _ = Nothing
 --partialFractionExpansion =
 {-
 toListValue :: Value -> ListValue
@@ -549,16 +650,24 @@ toListValue (a:+:b) = Sum $ toList a ++ toList b
 headAdd :: Value -> Value
 headAdd (_ :+: ab) = ab
 headAdd ab = ab
-tailAdd :: Value -> Maybe Value
-tailAdd (a :+: _) = Just a
-tailAdd _ = Nothing
+tailAdd :: Value -> Value
+tailAdd (a :+: _) = a
+tailAdd _ = 0
+mapAdd :: (Value -> Value) -> Value -> Value
+mapAdd func formula =
+  case t of
+  0 -> func h
+  v -> (mapAdd func t) + (func h)
+  where
+    h = headAdd formula
+    t = tailAdd formula
 
 headMul :: Value -> Value
 headMul (_ :*: ab) = ab
 headMul ab = ab
-tailMul :: Value -> Maybe Value
-tailMul (a :*: _) = Just a
-tailMul _ = Nothing
+tailMul :: Value -> Value
+tailMul (a :*: _) = a
+tailMul _ = 1
 
 headDiv :: Value -> Value
 headDiv (_ :/: ab) = ab
@@ -679,3 +788,174 @@ variables (v0 :*: v1) = variables v0 ++  variables v1
 variables (v0 :+: v1) = variables v0 ++  variables v1
 variables (v0 :/: v1) = variables v0 ++  variables v1
 
+denom :: Value -> Value
+denom (_:/:b) = b
+denom _ = 1
+
+numer :: Value -> Value
+numer (a:/:_) = a
+numer a = a
+
+headV :: Value -> (Value,Value)
+headV v = var (firstTerm,1)
+  where
+    firstTerm = headAdd v
+    var (c,v) =
+      case (isConst c) of
+      True -> (c,v)
+      False -> var (tailMul c,headMul c*v)
+
+
+splitExp :: Value -> (Value,Value)
+splitExp (a:^:b) = (a,b)
+splitExp a = (a,1)
+
+lcmGB :: Value -> Value -> Value
+lcmGB a b = lcmV ca cb * lcmGB' va vb
+  where
+    (ca,va) = headV a
+    (cb,vb) = headV b
+
+lcmGB' :: Value -> Value -> Value
+lcmGB' 1 1 = 1
+lcmGB' a 1 = a
+lcmGB' 1 a = a
+lcmGB' a b = 
+  if hva == hvb
+  then lcmGB' ta tb * (hva ** max hpa hpb)
+  else if hva < hvb
+       then lcmGB' a tb * (hvb ** hpb)
+       else lcmGB' ta b * (hva ** hpa)
+  where
+    (hva,hpa) = splitExp $ headMul a
+    (hvb,hpb) = splitExp $ headMul b
+    ta = tailMul a
+    tb = tailMul b
+
+divAllGB :: Value -> Value -> Value
+divAllGB a b = expand $ t + divGB h b
+  where
+    h = headAdd a
+    t = case (tailAdd a) of
+      0 -> 0
+      v -> divAllGB v b
+
+divGB :: Value -> Value -> Value
+divGB a b = (ca / cb) * divGB' va vb
+  where
+    (ca,va) = headV a
+    (cb,vb) = headV b
+
+divGB' :: Value -> Value -> Value
+divGB' 1 1 = 1
+divGB' a 1 = a
+divGB' 1 a = 1 / a
+divGB' a b =
+  if hva == hvb
+  then divGB' ta tb * (hva ** (hpa- hpb))
+  else if hva < hvb
+       then divGB' a tb / (hvb ** hpb)
+       else divGB' ta b * (hva ** hpa)
+  where
+    (hva,hpa) = splitExp $ headMul a
+    (hvb,hpb) = splitExp $ headMul b
+    ta = tailMul a
+    tb = tailMul b
+
+sGB f g = expand $ divAllGB (expand $ expand $ (ca*cb)*(lcmGB va vb)*f) (headAdd f)
+                 - divAllGB (expand $ expand $ (ca*cb)*(lcmGB va vb)*g) (headAdd g)
+  where
+    (ca,va) = headV f
+    (cb,vb) = headV g
+
+divs :: Value -> Value -> Bool
+divs f g = va == lcm'
+  where
+    (ca,va) = headV f
+    (cb,vb) = headV g
+    lcm' = lcmGB va vb
+
+reduction :: Value -> Value -> (Value,Value)
+reduction f g =
+  if va == lcm'
+  then
+    let (a,b) = reduction (expand (f - c*g)) g
+    in (c+a,b)
+  else
+    case mt of
+    0 -> (0,h)
+    t -> let (a,b) = reduction t g
+         in (a,b+h)
+  where
+    (ca,va) = headV f
+    (cb,vb) = headV g
+    lcm' = lcmGB va vb
+    h = headAdd f
+    mt = tailAdd f
+    c = (divGB lcm' vb)*ca/cb
+
+reductions :: Value -> [Value] -> Value
+reductions f [] = f
+reductions f (g:gs) =
+  let (a,b) = reduction f g
+  in case b of
+     0 -> 0
+     c -> expand $ reductions (expand c) gs
+
+allPair [] = []
+allPair (x:xs) = map (\x' -> (x,x')) xs ++ allPair xs
+  
+grobnerG :: [Value] -> [Value]
+grobnerG formulas = filter ((/=) 0) $ map (uncurry sGB) $ allPair formulas
+
+
+grobnerBasis :: [Value] -> [Value]
+grobnerBasis formulas = map lc1 $ grobnerBasis' formulas $ allPair formulas
+{-  where
+    fs = 
+    fs' = map headAdd fs
+    fs'' =  map (\f -> lcmGB f ) fs'
+    (ca,va) = headV f
+    (cb,vb) = headV g
+    lcm' f g = lcmGB va vb
+-}
+
+lc1 :: Value -> Value
+lc1 formula = expand $ expand $ formula / ca
+  where
+    (ca,va) = headV formula
+
+grobnerBasis' :: [Value] -> [(Value,Value)] -> [Value]
+grobnerBasis' formulas [] = formulas
+grobnerBasis' formulas aa@((a,b):other) =
+  case reductions (sGB a b) formulas of
+  0 -> grobnerBasis' formulas other
+  c -> grobnerBasis (formulas++[c])
+
+grobnerBasisIO :: [Value] -> IO [Value]
+grobnerBasisIO formulas = grobnerBasisIO' formulas $ allPair formulas
+
+grobnerBasisIO' :: [Value] -> [(Value,Value)] -> IO [Value]
+grobnerBasisIO' formulas [] = return formulas
+grobnerBasisIO' formulas aa@((a,b):other) = do
+  print "formulas"
+  print formulas
+  print "div"
+  print aa
+  print "a"
+  print a
+  print "b"
+  print b
+  print "sGB"
+  print (sGB a b)
+  print "r"
+  print (reductions (sGB a b) formulas)
+  case reductions (sGB a b) formulas of
+    0 -> grobnerBasisIO' formulas other
+    c -> grobnerBasisIO (formulas++[c])
+
+(x,y,z)=(val "x",val "y",val "z")
+
+fs = [((1 + ((-3) * (x ** 2))) + (x ** 3)) + ((-1) * y),
+      ((-1) + ((-1) * (x ** 2))) + (y ** 2)
+     ]

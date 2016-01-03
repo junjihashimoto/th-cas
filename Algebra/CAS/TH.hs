@@ -9,7 +9,7 @@ import Language.Haskell.TH.Lib
 import Language.Haskell.TH.Syntax
 import Language.Haskell.TH.Quote
 
-import Algebra.CAS.Core
+import Algebra.CAS.Type
 import qualified Algebra.CAS.Algorithm.Diff as A
 
 diff :: Q Exp -> Q Exp -> Q Exp

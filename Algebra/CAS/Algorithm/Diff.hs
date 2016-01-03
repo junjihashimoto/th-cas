@@ -29,3 +29,8 @@ diff (S (Log x')) y' = recip x' * diff x' y'
 
 diff a b = error $ "diff //  can not parse : " ++ show a ++ " ##  " ++ show b
 
+diffn :: Integer -> Value -> Value -> Value
+diffn 0 a _ = a
+diffn 1 a b = diff a b
+diffn n a b | n < 0 = error $ "diffn can not do negative diff. n:" ++ show n
+            | otherwise =  diffn (n-1) (diff a b) b
