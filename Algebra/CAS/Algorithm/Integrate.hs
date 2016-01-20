@@ -33,3 +33,13 @@ integrate (V x) (V y) | x == y     = (V x) ** 2 / 2
                       | otherwise = error "can not parse"
 
 integrate a b = error $ "can not parse : " ++ show a ++ " ##  " ++ show b
+
+-- | integrate function
+-- si <- indets f 
+-- si <- (map diff si) ++ si
+-- 
+-- 
+-- 
+-- 
+rishNorman :: Value -> Value -> Value
+rishNorman f x = error "not implemented"
