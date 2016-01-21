@@ -77,6 +77,9 @@ spec = do
       y*x**2*z/x `shouldBe` x*y*z
     it "(x**2+x)/x == (x**2+x):/:x" $ do
       (x**2+x)/x `shouldBe` (x**2+x):/:x
+    it "-(x+y-1)+x-y-3 == -2y-2" $ do
+      expand (x-y-3-(x+y-1)) `shouldBe` -2*y-2
+
   describe "read and show" $ do
     it "showFormula" $ do
       showFormula  (x^2+x+y) `shouldBe` "((V \"x\" :+: (V \"x\" :^: C (CI 2))) :+: V \"y\")"

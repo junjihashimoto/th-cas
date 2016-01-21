@@ -1,6 +1,3 @@
-{-#LANGUAGE TemplateHaskell#-}
-{-#LANGUAGE QuasiQuotes#-}
-
 module Algebra.CAS.Algorithm.Solve where
 
 import Algebra.CAS.Type
@@ -51,7 +48,7 @@ solve1 f v = do
   let [a,b] = map CV ["a","b"]
   list <- match (a*v+b) f
   let m = M.fromList list
-  return [m M.! b /  m M.! a]
+  return [- (m M.! b /  m M.! a)]
 
 solve2 :: Formula -> Formula -> Maybe [Formula]
 solve2 f v = abc <|> ac
@@ -80,6 +77,38 @@ solve f v = solve2 f v <|> solve1 f v
 
 
 linsolve :: [Formula] -- ^ formulas
-         -> [Formula] -- ^ variables
          -> Maybe [(Formula,Formula)] -- ^ answer
-linsolve fs vs = Nothing
+linsolve fs = Just $ rSolve r
+  where
+    r = reverse $ lReductions fs
+
+lReduction :: Formula
+           -> Formula
+           -> Formula
+lReduction f0 f1 =
+  if t0 == t1
+  then expand $ f1 - (c1/c0)*f0
+  else f1
+  where
+    (c0,t0) = headV f0
+    (c1,t1) = headV f1
+
+
+lReductions :: [Formula]
+            -> [Formula]
+lReductions [] = []
+lReductions (f:fs) = f:lReductions (flist f fs)
+  where
+    flist :: Formula -> [Formula] -> [Formula]
+    flist f' fs' =  map (lReduction f') fs'
+
+rSolve :: [Formula] -> [(Formula,Formula)]
+rSolve [] = []
+rSolve (f:fs) =
+  case a of
+  Just [a'] -> (v,a'): rSolve (map (subst [(v,a')]) fs)
+  Just _ -> error "error"
+  Nothing -> []
+  where
+    a = solve1 f v
+    v = head $ variables f
