@@ -22,6 +22,24 @@ z = "z"
 
 spec :: Spec
 spec = do
+  describe "simplify(sqrt)" $ do
+    it "sqrt(4) == 2" $ do
+      let v = 4 :: Value
+      sqrt v `shouldBe` 2
+    it "sqrt(0) == 0" $ do
+      let v = 0 :: Value
+      sqrt v `shouldBe` 0
+    it "sqrt(1) == 1" $ do
+      let v = 1 :: Value
+      sqrt v `shouldBe` 1
+    it "sqrt(3) == Sqrt 3" $ do
+      let v = 3 :: Value
+      sqrt v `shouldBe` S (Sqrt 3)
+    it "sqrt(-1) == I" $ do
+      let v = -1 :: Value
+      sqrt v `shouldBe` I
+    it "I*I == -1" $ do
+      I*I `shouldBe` -1
   describe "add" $ do
     it "x<y" $ do
       x<y `shouldBe` True
@@ -66,3 +84,8 @@ spec = do
       read (showFormula  (x^2+x+y)) `shouldBe` x^2+x+y
     it "pretty print" $ do
       show (x^2+x+y) `shouldBe` "x + x^2 + y"
+  describe "substitute" $ do
+    it "subst [(x,1),(y,2)] (x+y) = 3" $ do
+      subst [(x,1),(y,2)] (x+y) `shouldBe` 3
+--    it "subst x 1 (x^2+x+3) = 5" $ do
+--      subst [(x,1)] (x**2+x+3) `shouldBe` 5

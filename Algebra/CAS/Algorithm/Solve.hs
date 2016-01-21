@@ -77,3 +77,9 @@ solve :: Formula -- ^ formula
       -> Formula -- ^ variable
       -> Maybe [Formula] -- ^ answer
 solve f v = solve2 f v <|> solve1 f v
+
+
+linsolve :: [Formula] -- ^ formulas
+         -> [Formula] -- ^ variables
+         -> Maybe [(Formula,Formula)] -- ^ answer
+linsolve fs vs = Nothing

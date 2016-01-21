@@ -46,10 +46,13 @@ spec = do
       match (a*x**2+b*x+c) (x**2+3*x+4) `shouldBe` Just [(c,4),(b,3),(a,1)]
     it "a*x**2+b*x+c vs x**2 -2*x+1" $ do
       match (a*x**2+b*x+c) (x**2-2*x+1) `shouldBe` Just [(c,1),(b,-2),(a,1)]
-  describe "solver" $ do
+  describe "polynomial solver" $ do
     it "3*x + 3 = 0" $ do
       solve (3*x+3) x `shouldBe` Just [1]
     it "x**2 - 2*x + 1 = 0" $ do
       solve (x**2 - 2*x + 1) x `shouldBe` Just [1,1]
     it "x**2 - 4*x + 3 = 0" $ do
-      solve (x**2 - 4*x + 3) x `shouldBe` Just [1,3]
+      solve (x**2 - 4*x + 3) x `shouldBe` Just [3,1]
+  describe "linear solver" $ do
+    it "x + y = 1,x - y = 3 == x = 2,y=-1" $ do
+      linsolve [x+y-1,x-y-3] [x,y] `shouldBe` Just [(x,2),(y,-1)]

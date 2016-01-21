@@ -161,6 +161,12 @@ instance Floating Const where
   pi = CR pi
   exp Zero = 1
   exp a = CR $ exp $ fromRational $ toRational a
+  sqrt (CI a) | a2 == a = CI a1
+              | otherwise = CR $ sqrt $ fromRational $ toRational a
+    where
+      a0 = sqrt (fromIntegral a) :: Double
+      a1 = round a0 :: Integer
+      a2 = a1 * a1
   sqrt a = CR $ sqrt $ fromRational $ toRational a
   log One = Zero
   log a = CR $ log $ fromRational $ toRational a
@@ -445,6 +451,15 @@ instance Floating Formula where
   pi = Pi
   exp (C Zero) = C One
   exp a = S $ Exp a
+  sqrt (C Zero) = 0
+  sqrt (C One) = 1
+  sqrt a'@(C (CI a)) | a < 0 = I * sqrt (-a')
+                     | a2 == a = C $ CI a1
+                     | otherwise = S $ Sqrt a'
+    where
+      a0 = sqrt (fromIntegral a) :: Double
+      a1 = round a0 :: Integer
+      a2 = a1 * a1
   sqrt a = S $ Sqrt a
   log (C One) = C Zero
   log a = S $ Log a
@@ -606,8 +621,9 @@ tailDiv (a :/: _) = Just a
 tailDiv _ = Nothing
 
 
-subst :: Formula -> Formula -> Formula -> Formula
-subst org mod' formula = mapFormula func formula
+subst :: [(Formula,Formula)] -> Formula -> Formula
+subst [] formula = formula
+subst ((org,mod'):other) formula = subst other $ mapFormula func formula
   where
     func v = if v == org then mod' else v
 
