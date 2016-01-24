@@ -1,16 +1,13 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# LANGUAGE ViewPatterns#-}
 {-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Algebra.CAS.THSpec (main, spec) where
 
 import Test.Hspec
 import Test.Hspec.QuickCheck
-import Algebra.CAS
+import Algebra.CAS()
 import qualified Algebra.CAS.TH as TH
 
 main :: IO ()

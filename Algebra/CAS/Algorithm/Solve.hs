@@ -1,6 +1,6 @@
 module Algebra.CAS.Algorithm.Solve where
 
-import Algebra.CAS.Type
+import Algebra.CAS.Base
 import qualified Data.Map as M
 import Control.Applicative
 

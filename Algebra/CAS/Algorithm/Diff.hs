@@ -3,12 +3,12 @@
 
 module Algebra.CAS.Algorithm.Diff where
 
-import Algebra.CAS.Type
+import Algebra.CAS.Base
 --import Algebra.CAS.Core
 --import Algebra.CAS.Algorithm.Simplify
 
 
-diff :: Value -> Value -> Value
+diff :: Formula -> Formula -> Formula
 diff (V x') (V y') | x' == y' = C One
                    | otherwise = C Zero
 diff (x :+: y) z = (diff x z) + (diff y z)
@@ -29,7 +29,7 @@ diff (S (Log x')) y' = recip x' * diff x' y'
 
 diff a b = error $ "diff //  can not parse : " ++ show a ++ " ##  " ++ show b
 
-diffn :: Integer -> Value -> Value -> Value
+diffn :: Integer -> Formula -> Formula -> Formula
 diffn 0 a _ = a
 diffn 1 a b = diff a b
 diffn n a b | n < 0 = error $ "diffn can not do negative diff. n:" ++ show n

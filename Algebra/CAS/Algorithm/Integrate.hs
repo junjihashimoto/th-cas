@@ -3,19 +3,19 @@
 
 module Algebra.CAS.Algorithm.Integrate where
 
-import Algebra.CAS.Type
+import Algebra.CAS.Base
 import Algebra.CAS.Core
 import Algebra.CAS.Algorithm.Simplify
 
 
 -- | integrate function
 -- >>> import Algebra.CAS.Core(prettyPrint)
--- >>> let x = "x" :: Value
+-- >>> let x = "x" :: Formula
 -- >>> prettyPrint $ simpConst $ integrate x x
 -- "(x ** 2) / 2"
 -- >>> prettyPrint $ simpConst $ integrate (x**2) x
 -- "(x ** 3) / 3"
-integrate :: Value -> Value -> Value
+integrate :: Formula -> Formula -> Formula
 integrate (x :+: y) z = (integrate x z) + (integrate y z)
 integrate (a@(CI _) :*: y) z = a * integrate y z
 integrate (a@(C _) :*: y) z = a * integrate y z
@@ -41,5 +41,5 @@ integrate a b = error $ "can not parse : " ++ show a ++ " ##  " ++ show b
 -- 
 -- 
 -- 
-rishNorman :: Value -> Value -> Value
+rishNorman :: Formula -> Formula -> Formula
 rishNorman f x = error "not implemented"

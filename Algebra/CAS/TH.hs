@@ -6,12 +6,12 @@ module Algebra.CAS.TH where
 
 import Language.Haskell.TH.Syntax
 
-import Algebra.CAS.Type
+import Algebra.CAS.Base
 import qualified Algebra.CAS.Algorithm.Diff as A
 import qualified Language.Haskell.TH.Ppr as P
 import qualified Data.Text as T
 
-exp2val :: Exp -> Value
+exp2val :: Exp -> Formula
 
 exp2val (InfixE (Just a) (VarE op) (Just b))
   | op == '(+) = exp2val a + exp2val b
@@ -46,7 +46,7 @@ exp2val (VarE a@(Name (OccName v) _)) | a == 'pi = Pi
 
 exp2val a@_ = error $ "exp2val // can not parse:" ++ show a
 
-val2exp :: Value -> Exp
+val2exp :: Formula -> Exp
 val2exp (a :+: b) = (InfixE (Just (val2exp a)) (VarE '(+)) (Just (val2exp b)))
 val2exp (a :*: b) = (InfixE (Just (val2exp a)) (VarE '(*)) (Just (val2exp b)))
 val2exp (a :/: b) = (InfixE (Just (val2exp a)) (VarE '(/)) (Just (val2exp b)))
@@ -78,23 +78,23 @@ val2exp (V a) = VarE $ mkName a
 
 val2exp a@_ = error $ "val2exp // can not parse:" ++ show a
 
-lift  ::  Value -> Exp
+lift  ::  Formula -> Exp
 lift  = val2exp
-lift1 ::  (Value -> Value) -> Exp -> Exp
+lift1 ::  (Formula -> Formula) -> Exp -> Exp
 lift1 a b = val2exp $ a (exp2val b)
-lift2 ::  (Value -> Value -> Value) -> Exp -> Exp -> Exp
+lift2 ::  (Formula -> Formula -> Formula) -> Exp -> Exp -> Exp
 lift2 a b c = val2exp $ a (exp2val b) (exp2val c)
-lift3 ::  (Value -> Value -> Value -> Value) -> Exp -> Exp -> Exp -> Exp
+lift3 ::  (Formula -> Formula -> Formula -> Formula) -> Exp -> Exp -> Exp -> Exp
 lift3 a b c d = val2exp $ a (exp2val b) (exp2val c) (exp2val d)
 
-prettyPrint ::  Value ->  String
+prettyPrint ::  Formula ->  String
 prettyPrint var = T.unpack $
                   T.replace "GHC.Num." "" $
                   T.replace "GHC.Float." "" $
                   T.replace "GHC.Real." "" $
                   T.pack $ show $ P.ppr $ val2exp var
 
---deriving Show Value where
+--deriving Show Formula where
 --  show a = prettyPrint a
 
 diff :: Q Exp -> Q Exp -> Q Exp

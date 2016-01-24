@@ -1,42 +1,37 @@
-{-# LANGUAGE ViewPatterns#-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Algebra.CAS.BasicSpec (main, spec) where
 
 import Test.Hspec
-import Algebra.CAS.Type
+import Algebra.CAS.Base
 
 main :: IO ()
 main = hspec spec
 
-x :: Value
+x :: Formula
 x = "x"
-y :: Value
+y :: Formula
 y = "y"
-z :: Value
+z :: Formula
 z = "z"
 
 spec :: Spec
 spec = do
   describe "simplify(sqrt)" $ do
     it "sqrt(4) == 2" $ do
-      let v = 4 :: Value
+      let v = 4 :: Formula
       sqrt v `shouldBe` 2
     it "sqrt(0) == 0" $ do
-      let v = 0 :: Value
+      let v = 0 :: Formula
       sqrt v `shouldBe` 0
     it "sqrt(1) == 1" $ do
-      let v = 1 :: Value
+      let v = 1 :: Formula
       sqrt v `shouldBe` 1
     it "sqrt(3) == Sqrt 3" $ do
-      let v = 3 :: Value
+      let v = 3 :: Formula
       sqrt v `shouldBe` S (Sqrt 3)
     it "sqrt(-1) == I" $ do
-      let v = -1 :: Value
+      let v = -1 :: Formula
       sqrt v `shouldBe` I
     it "I*I == -1" $ do
       I*I `shouldBe` -1

@@ -3,20 +3,20 @@
 
 module Algebra.CAS.Algorithm.Simplify where
 
-import Algebra.CAS.Type
+import Algebra.CAS.Base
 import Data.List
 
 
 -- | simplify operations of constant values
 -- >>> import Algebra.CAS.Core(prettyPrint)
--- >>> let x = "x" :: Value
+-- >>> let x = "x" :: Formula
 -- >>> prettyPrint $ simpConst $ x * 0
 -- "0"
 -- >>> prettyPrint $ simpConst $ x * 1
 -- "x"
 -- >>> prettyPrint $ simpConst $ 3 + 3
 -- "6"
-simpConst :: Value -> Value
+simpConst :: Formula -> Formula
 simpConst (CI 0) = Zero
 simpConst (CI 1) = One
 simpConst (C 0) = Zero
@@ -72,77 +72,77 @@ simpConst a = a
 
 -- | polinomial adder
 -- >>> import Algebra.CAS.Core(prettyPrint)
--- >>> let x = "x" :: Value
+-- >>> let x = "x" :: Formula
 -- >>> prettyPrint $ addPoly $ 2*x+x
 -- "3 * x"
-addPoly ::  Value ->  Value
+addPoly ::  Formula ->  Formula
 addPoly val =
-  let vals :: [[Value]]
+  let vals :: [[Formula]]
       vals = map destructMult $ destructAdd  val
-      vals' ::  [ValueWithConst]
-      vals' = groupByValue $ map splitConst vals
-  in (converge simpConst) $ foldr1 (:+:) $ map toValue vals' 
+      vals' ::  [FormulaWithConst]
+      vals' = groupByFormula $ map splitConst vals
+  in (converge simpConst) $ foldr1 (:+:) $ map toFormula vals' 
 
 
 -- | polinomial divider
-divPoly ::  Value ->  Value
+divPoly ::  Formula ->  Formula
 divPoly val =
-  let vals :: [[Value]]
+  let vals :: [[Formula]]
       vals = map destructMult $ destructAdd  val
-      vals' ::  [ValueWithConst]
-      vals' = groupByValue $ map splitConst vals
-  in foldr1 (:+:) $ map toValue vals' 
+      vals' ::  [FormulaWithConst]
+      vals' = groupByFormula $ map splitConst vals
+  in foldr1 (:+:) $ map toFormula vals' 
 
-converge ::  (Value ->  Value) -> Value -> Value
+converge ::  (Formula ->  Formula) -> Formula -> Formula
 converge func val =
   let v' = func val
   in if v' ==  val
      then v'
      else converge func v'
 
-simp ::  Value -> Value
+simp ::  Formula -> Formula
 simp = (converge simpConst).addPoly.(converge simpConst)
 
-destructAdd ::  Value -> [Value]
+destructAdd ::  Formula -> [Formula]
 destructAdd (x :+: y) = destructAdd x ++ destructAdd y
 destructAdd x = [x]
 
-destructMult ::  Value ->  [Value]
+destructMult ::  Formula ->  [Formula]
 destructMult (x :*: y) = destructMult x ++ destructMult y
 destructMult (x :/: y) = destructMult x ++ map (\v ->  CI 1 :/: v) (destructMult y)
 destructMult x = [x]
 
 
 
-data ValueWithConst =
-  ValueWithConst {
-    v_const ::  [[Value]]
-  , v_value ::  [Value]
+data FormulaWithConst =
+  FormulaWithConst {
+    v_const ::  [[Formula]]
+  , v_value ::  [Formula]
   } deriving (Show,Eq,Ord)
 
-toValue ::  ValueWithConst ->  Value
-toValue val =
-  let consts ::  [Value]
+toFormula ::  FormulaWithConst ->  Formula
+toFormula val =
+  let consts ::  [Formula]
       consts = map (\v ->  foldr (:*:) (CI 1) v) (v_const val)
   in (foldr (:+:) (CI 0) consts) :*:
      (foldr (:*:) (CI 1) (v_value val))
 
 
-splitConst ::  [Value] ->  ValueWithConst
+splitConst ::  [Formula] ->  FormulaWithConst
 splitConst vals =
-  ValueWithConst {
+  FormulaWithConst {
     v_const = [ifNull (filter isConst vals)]
   , v_value = sort (filter (not.isConst) vals)
   }
   where
     ifNull val = if val ==  [] then [CI 1] else val
 
-groupByValue ::  [ValueWithConst] ->  [ValueWithConst]
-groupByValue vals =  map merge $ groupBy (\a b ->  v_value a ==  v_value b) $ sortBy (\a b -> compare a b) vals
+groupByFormula ::  [FormulaWithConst] ->  [FormulaWithConst]
+groupByFormula vals =  map merge $ groupBy (\a b ->  v_value a ==  v_value b) $ sortBy (\a b -> compare a b) vals
   where
-    merge :: [ValueWithConst] ->  ValueWithConst
+    merge :: [FormulaWithConst] ->  FormulaWithConst
     merge vals@(x:xs) = 
-      ValueWithConst {
+      FormulaWithConst {
         v_const = foldr (++) [] $ map v_const vals
       , v_value = v_value x
       }

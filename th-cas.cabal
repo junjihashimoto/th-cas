@@ -24,7 +24,7 @@ source-repository head
 library
   -- hs-source-dirs:      src
   exposed-modules:     Algebra.CAS
-                     , Algebra.CAS.Type
+                     , Algebra.CAS.Base
 --                     , Algebra.CAS.Core
 --                     , Algebra.CAS.Algorithm
                      , Algebra.CAS.Algorithm.Diff
@@ -60,6 +60,7 @@ test-suite spec
                      , Algebra.CAS.BasicSpec
                      , Algebra.CAS.DiffSpec
                      , Algebra.CAS.SolveSpec
+                     , Algebra.CAS.GrobnerBasisSpec
   build-depends:       base
                      , th-cas
                      , hspec

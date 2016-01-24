@@ -1,12 +1,6 @@
-{-#LANGUAGE StandaloneDeriving#-}
-{-#LANGUAGE TemplateHaskell#-}
-{-#LANGUAGE QuasiQuotes#-}
 {-#LANGUAGE OverloadedStrings#-}
-{-#LANGUAGE TypeSynonymInstances#-}
-{-#LANGUAGE FlexibleInstances#-}
-{-#LANGUAGE CPP#-}
 
-module Algebra.CAS.Type where
+module Algebra.CAS.Base where
 
 import Data.String
 
@@ -188,6 +182,29 @@ instance Floating Const where
   atanh a = CR $ atanh $ fromRational $ toRational a
   acosh a = CR $ acosh $ fromRational $ toRational a
 
+toInt :: Const -> Maybe Integer
+toInt Zero = Just $ 0
+toInt One = Just $ 1
+toInt (CI a) = Just $ a
+toInt _ = Nothing
+
+mapTuple :: (a -> b) -> (a,a) ->  (b,b)
+mapTuple f (a,b) = (f a, f b)
+
+instance Integral Const where
+  quot a b = fst $ quotRem a b
+  rem a b = snd $ quotRem a b
+  quotRem a b =
+    case (toInt a,toInt b) of
+    (Just a',Just b') -> mapTuple (constSimplify.CI) $ quotRem a' b'
+    _ -> if a == b then (1,0) else (0,a)
+  div = quot
+  mod = rem
+  toInteger Zero = 0
+  toInteger One = 1
+  toInteger (CI a) = toInteger a
+  toInteger a = error $ "can not do toInteger:" ++ show a
+
 
 data SpecialFunction =
    Sin Formula
@@ -225,8 +242,6 @@ data Formula =
  | Formula :+: Formula
  | Formula :/: Formula
  deriving (Eq,Read)
-
-type Value = Formula
 
 instance Ord Formula where
   compare (C a) (C b) = compare a b
@@ -415,6 +430,14 @@ divGB' a b =
     ta = tailMul a
     tb = tailMul b
 
+divAll :: Formula -> Formula -> Formula
+divAll a b = expand $ t + (h/b)
+  where
+    h = headAdd a
+    t = case (tailAdd a) of
+      0 -> 0
+      v -> divAll v b
+
 instance Num Formula where
   fromInteger 0 = C Zero
   fromInteger 1 = C One
@@ -506,10 +529,75 @@ instance Real Formula where
   toRational _ = toRational (0::Int)
 
 
+
+
+lcmMonomial :: Formula -> Formula -> Formula
+lcmMonomial a b = lcmV ca cb * lcmMonomial' va vb
+  where
+    (ca,va) = headV a
+    (cb,vb) = headV b
+    lcmV :: Formula -> Formula -> Formula
+    lcmV (C a') (C b') = C (lcm a' b')
+    lcmV a' b' = a' * b'
+
+lcmMonomial' :: Formula -> Formula -> Formula
+lcmMonomial' 1 1 = 1
+lcmMonomial' a 1 = a
+lcmMonomial' 1 a = a
+lcmMonomial' a b = 
+  if hva == hvb
+  then lcmMonomial' ta tb * (hva ** max hpa hpb)
+  else if hva < hvb
+       then lcmMonomial' a tb * (hvb ** hpb)
+       else lcmMonomial' ta b * (hva ** hpa)
+  where
+    (hva,hpa) = splitExp $ headMul a
+    (hvb,hpb) = splitExp $ headMul b
+    ta = tailMul a
+    tb = tailMul b
+
+
+{-
+divs :: Formula -> Formula -> Bool
+divs f g = va == lcm'
+  where
+    (ca,va) = headV f
+    (cb,vb) = headV g
+    lcm' = lcmMonomial va vb
+-}
+
+reduction :: Formula -> Formula -> (Formula,Formula)
+reduction f g =
+  if va == lcm'
+  then
+    let (a,b) = reduction (expand (f - c*g)) g
+    in (c+a,b)
+  else
+    case mt of
+    0 -> (0,h)
+    t -> let (a,b) = reduction t g
+         in (a,b+h)
+  where
+    (ca,va) = headV f
+    (cb,vb) = headV g
+    lcm' = lcmMonomial va vb
+    h = headAdd f
+    mt = tailAdd f
+    c = (lcm' / vb)*ca/cb
+
+reductions :: Formula -> [Formula] -> Formula
+reductions f [] = f
+reductions f (g:gs) =
+  let (a,b) = reduction f g
+  in case b of
+     0 -> 0
+     c -> expand $ reductions (expand c) gs
+
 instance Integral Formula where
   quot a b = fst $ quotRem a b
   rem a b = snd $ quotRem a b
-  quotRem a' b' =
+  quotRem = reduction
+  {-
     case quotRemV a' b' of
     (S (Abs a),S (Abs b)) -> (a,b)
     (S (Abs a),b) -> (a,b)
@@ -539,7 +627,7 @@ instance Integral Formula where
             if da < db
             then (0,a)
             else (expand (div'' + divnum * vv),rem'')
-
+  -}
   div = quot
   mod = rem
   toInteger (C Zero) = 0
@@ -574,22 +662,17 @@ expand (a:/:1) = a
 expand a = a
 
 
-gcdV :: Formula -> Formula -> Formula
-gcdV a b | a == C Zero = b
-         | b == C Zero = a
-         | otherwise = 
-             let (da,_,_) = degree a
-                 (db,_,_) = degree b
-             in if da >= db then
-                  gcdV (a `rem` b) b
-                else
-                  gcdV a (b `rem` a)
+gcdPolynomial :: Formula -> Formula -> Maybe Formula
+gcdPolynomial a b | a == C Zero = Just b
+                  | b == C Zero = Just a
+                  | otherwise =
+                      let (a',b') = if a>=b then (a,b) else (b,a)
+                          r = a' `rem` b'
+                      in if  r == a' then Nothing else gcdPolynomial r b'
 
-lcmV :: Formula -> Formula -> Formula
-lcmV a b =
-  case lcm a b of
-  (S (Abs v)) -> expand v
-  v -> expand v
+--  case lcm a b of
+--  (S (Abs v)) -> expand v
+--  v -> expand v
 
 headAdd :: Formula -> Formula
 headAdd (_ :+: ab) = ab
@@ -785,10 +868,19 @@ ppr (S (Asinh v)) = "asinh(" ++ ppr v ++")"
 ppr (S (Acosh v)) = "acosh(" ++ ppr v ++")"
 ppr (S (Atanh v)) = "atanh(" ++ ppr v ++")"
 ppr (a:^:b) = ppr a ++"^"++ ppr b
-ppr (a'@(_:*:_):*:c) = ppr a'++"("++ ppr c++")"
-ppr (a:*:b) = "("++ppr a ++")("++ ppr b++")"
+ppr (a'@(_:*:_):*:c) = ppr a'++"*" ++ ppr' c
+ppr (a:*:b) = ppr' a ++"*"++ ppr' b
 ppr (a:+:b) = ppr a ++" + "++ ppr b
 ppr (a:/:b) = "(" ++ ppr a ++")/("++ ppr b ++")"
+
+ppr' :: Formula -> String
+ppr' c@(C (CI _)) = if c >= 0 then ppr c else "(" ++ ppr c ++ ")"
+ppr' c@(C (CR _)) = if c >= 0 then ppr c else "(" ++ ppr c ++ ")"
+ppr' c@I = ppr c
+ppr' c@Pi = ppr c
+ppr' c@(V _) = ppr c
+ppr' c@(CV _) = ppr c
+ppr' c = "(" ++ ppr c ++ ")"
 
 instance Show Formula where
   show = ppr

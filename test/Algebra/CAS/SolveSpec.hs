@@ -1,32 +1,26 @@
-{-# LANGUAGE ViewPatterns#-}
-{-# LANGUAGE QuasiQuotes #-}
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE ScopedTypeVariables #-}
 
 module Algebra.CAS.SolveSpec (main, spec) where
 
 import Test.Hspec
-import Test.Hspec.QuickCheck
-import Algebra.CAS.Type
+import Algebra.CAS.Base
 import Algebra.CAS.Algorithm.Solve
 
 main :: IO ()
 main = hspec spec
 
-x :: Value
+x :: Formula
 x = "x"
-y :: Value
+y :: Formula
 y = "y"
-z :: Value
+z :: Formula
 z = "z"
 
-a :: Value
+a :: Formula
 a = CV "a"
-b :: Value
+b :: Formula
 b = CV "b"
-c :: Value
+c :: Formula
 c = CV "c"
 
 spec :: Spec
@@ -58,3 +52,5 @@ spec = do
       lReductions [x+y-1,x-y-3] `shouldBe` [x+y-1,2*x-4]
     it "x + y = 1,x - y = 3 == x = 2,y=-1" $ do
       linsolve [x+y-1,x-y-3] `shouldBe` Just [(x,2),(y,-1)]
+    it "x+y+z=2,x+2*y+3*z=1,2*x+y+z=2" $ do
+      linsolve [x+y+z-2,x+2*y+3*z-1,2*x+y+z-2] `shouldBe` Just [(x,0),(y,5),(z,-3)]
