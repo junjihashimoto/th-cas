@@ -63,6 +63,8 @@ spec = do
       (x+y)*y ==  x*y+y**2 `shouldBe` False
     it "expand ((x+y)*y) == x*y+y**2" $ do
       expand ((x+y)*y) `shouldBe` x*y+y**2 
+    it "expand (1+x)*(2+x)*((y+x)*(y+x*2)+x)" $ do
+      expand ((1+x)*(2+x)*((y+x)*(y+x*2)+x)) `shouldBe` 2*x + 7*(x^2) + 7*(x^3) + 2*(x^4) + 6*x*y + 9*(x^2)*y + 3*(x^3)*y + 2*(y^2) + 3*x*(y^2) + (x^2)*(y^2)
   describe "div" $ do
     it "x/x==1" $ do
       x/x `shouldBe` 1
@@ -79,6 +81,9 @@ spec = do
       gcdPolynomial (2*x) x `shouldBe`  x
     it "gcdPolynomial (expand $ (x+y)*(x+2)) (expand $ (x+y)*(x+3)) == (x+y)" $ do
       gcdPolynomial (expand $ (x+y)*(x+2)) (expand $ (x+y)*(x+3)) `shouldBe` (x+y)
+  describe "lcm" $ do
+    it "lcmPolynomial  (expand $ (x+y)*(x+1)) (expand $ (x+y)*(x+2))" $ do
+      lcmPolynomial  (expand $ (x+y)*(x+1)) (expand $ (x+y)*(x+2)) `shouldBe` expand ((x+y)*(x+1)*(x+2))
   describe "read and show" $ do
     it "showFormula" $ do
       showFormula  (x^2+x+y) `shouldBe` "((V \"x\" :+: (V \"x\" :^: C (CI 2))) :+: V \"y\")"
@@ -89,5 +94,3 @@ spec = do
   describe "substitute" $ do
     it "subst [(x,1),(y,2)] (x+y) = 3" $ do
       subst [(x,1),(y,2)] (x+y) `shouldBe` 3
---    it "subst x 1 (x^2+x+3) = 5" $ do
---      subst [(x,1)] (x**2+x+3) `shouldBe` 5

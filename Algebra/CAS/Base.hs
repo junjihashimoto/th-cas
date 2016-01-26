@@ -529,8 +529,6 @@ instance Real Formula where
   toRational _ = toRational (0::Int)
 
 
-
-
 lcmMonomial :: Formula -> Formula -> Formula
 lcmMonomial a b = lcmV ca cb * lcmMonomial' va vb
   where
@@ -597,37 +595,6 @@ instance Integral Formula where
   quot a b = fst $ quotRem a b
   rem a b = snd $ quotRem a b
   quotRem = reduction
-  {-
-    case quotRemV a' b' of
-    (S (Abs a),S (Abs b)) -> (a,b)
-    (S (Abs a),b) -> (a,b)
-    (a,S (Abs b)) -> (a,b)
-    (a,b) -> (a,b)
-    where
-      quotRemV (S (Abs a)) (S (Abs b)) = quotRemV a b
-      quotRemV (S (Abs a)) b = quotRemV a b
-      quotRemV a (S (Abs b)) = quotRemV a b
-      quotRemV a b =
-        case (mva,mvb) of
-        (Just va,Just vb) | va == vb -> quotRem'
-                          | otherwise -> error "quotRem does not support multi variable"
-        (Nothing,Nothing) -> (a/b,0)
-        (_,_) -> quotRem'
-          
-        where
-          (da,mva,ca)=degree a
-          (db,mvb,cb)=degree b
-          divnum = ca/cb
-          vv = case mva of
-            Just va -> (va**(fromIntegral (da-db)))
-            Nothing -> 1
-          rem' = expand $ a - (b*vv*divnum)
-          (div'',rem'') = quotRem rem' b
-          quotRem'  =
-            if da < db
-            then (0,a)
-            else (expand (div'' + divnum * vv),rem'')
-  -}
   div = quot
   mod = rem
   toInteger (C Zero) = 0
@@ -653,12 +620,11 @@ converge func v =
      else converge func v'
 
 expand :: Formula -> Formula
-expand ((a:+:b):*:(c:+:d)) = expand (a*c) + expand (b*c) +expand (a*d) +expand (b*d)
-expand ((a:+:b):*:c) = expand (a*c) + expand (b*c)
-expand (a:*:(b:+:c)) = expand (a*b) + expand (a*c)
-expand (a:+:b) = expand a + expand b
-expand (a:*:b) = expand a * expand b
-expand (a:/:1) = a
+expand ((a:+:b):*:c) = let (a',b',c') = (expand a,expand b,expand c) in expand (a'*c') + expand (b'*c')
+expand (a:*:(b:+:c)) = let (a',b',c') = (expand a,expand b,expand c) in expand (a'*b') + expand (a'*c')
+expand (a:+:b) = let (a',b') = (expand a,expand b) in  a'+b'
+expand (a:*:b) = let (a',b') = (expand a,expand b) in  a'*b'
+expand (a:/:1) = expand a
 expand a = a
 
 
@@ -672,9 +638,12 @@ gcdPolynomial a b | a == 0 = b
                          0 -> b'
                          _ -> if r == a' then 1 else gcdPolynomial r b'
 
---  case lcm a b of
---  (S (Abs v)) -> expand v
---  v -> expand v
+lcmPolynomial :: Formula -> Formula -> Formula
+lcmPolynomial a b =
+  let g = gcdPolynomial a b
+      d0 = a `div` g
+      d1 = b `div` g
+  in expand $ d0*d1*g
 
 headAdd :: Formula -> Formula
 headAdd (_ :+: ab) = ab
