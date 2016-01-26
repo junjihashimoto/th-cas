@@ -1,4 +1,4 @@
-module Algebra.CAS.Algorithm.Solve where
+module Algebra.CAS.Solve where
 
 import Algebra.CAS.Base
 import qualified Data.Map as M

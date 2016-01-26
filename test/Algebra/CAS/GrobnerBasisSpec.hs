@@ -4,7 +4,7 @@ module Algebra.CAS.GrobnerBasisSpec (main, spec) where
 
 import Test.Hspec
 import Algebra.CAS.Base
-import Algebra.CAS.Algorithm.GrobnerBasis
+import Algebra.CAS.GrobnerBasis
 
 main :: IO ()
 main = hspec spec

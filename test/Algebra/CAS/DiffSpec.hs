@@ -4,7 +4,7 @@ module Algebra.CAS.DiffSpec (main, spec) where
 
 import Test.Hspec
 import Algebra.CAS.Base
-import Algebra.CAS.Algorithm.Diff
+import Algebra.CAS.Diff
 
 main :: IO ()
 main = hspec spec

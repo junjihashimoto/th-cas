@@ -25,17 +25,10 @@ library
   -- hs-source-dirs:      src
   exposed-modules:     Algebra.CAS
                      , Algebra.CAS.Base
---                     , Algebra.CAS.Core
---                     , Algebra.CAS.Algorithm
-                     , Algebra.CAS.Algorithm.Diff
-                     , Algebra.CAS.Algorithm.GrobnerBasis
-                     , Algebra.CAS.Algorithm.Solve
---                     , Algebra.CAS.Algorithm.Expand
---                     , Algebra.CAS.Algorithm.Simplify
---                     , Algebra.CAS.Algorithm.Integrate
---                     , Algebra.CAS.Algorithm.Gcd
---                     , Algebra.CAS.Algorithm.Fraction
---                     , Algebra.CAS.Algorithm.Solve
+                     , Algebra.CAS.Diff
+                     , Algebra.CAS.GrobnerBasis
+                     , Algebra.CAS.Integrate
+                     , Algebra.CAS.Solve
                      , Algebra.CAS.TH
   build-depends:       base == 4.*
                      , template-haskell

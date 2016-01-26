@@ -1,11 +1,15 @@
 
 module Algebra.CAS (
   module Algebra.CAS.Base
-, module Algebra.CAS.Algorithm.Diff
---, module Algebra.CAS.Algorithm.Simplify
+, module Algebra.CAS.Diff
+, module Algebra.CAS.GrobnerBasis
+, module Algebra.CAS.Integrate
+, module Algebra.CAS.Solve
 ) where
 
 import Algebra.CAS.Base
-import Algebra.CAS.Algorithm.Diff
---import Algebra.CAS.Algorithm.Simplify
+import Algebra.CAS.Diff
+import Algebra.CAS.GrobnerBasis
+import Algebra.CAS.Integrate
+import Algebra.CAS.Solve
 

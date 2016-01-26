@@ -8,7 +8,7 @@ main = do
     [
     "-XOverloadedStrings",
     "Algebra/CAS.hs",
-    "Algebra/CAS/Algorithm/Diff.hs",
+    "Algebra/CAS/Diff.hs",
     "Algebra/CAS/TH.hs",
     "Algebra/CAS/Base.hs"
     ]

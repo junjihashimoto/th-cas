@@ -7,7 +7,7 @@ module Algebra.CAS.TH where
 import Language.Haskell.TH.Syntax
 
 import Algebra.CAS.Base
-import qualified Algebra.CAS.Algorithm.Diff as A
+import qualified Algebra.CAS.Diff as A
 import qualified Language.Haskell.TH.Ppr as P
 import qualified Data.Text as T
 import Control.Applicative

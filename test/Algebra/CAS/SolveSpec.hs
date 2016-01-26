@@ -4,7 +4,7 @@ module Algebra.CAS.SolveSpec (main, spec) where
 
 import Test.Hspec
 import Algebra.CAS.Base
-import Algebra.CAS.Algorithm.Solve
+import Algebra.CAS.Solve
 
 main :: IO ()
 main = hspec spec

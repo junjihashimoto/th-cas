@@ -1,12 +1,9 @@
 {-#LANGUAGE TemplateHaskell#-}
 {-#LANGUAGE QuasiQuotes#-}
 
-module Algebra.CAS.Algorithm.Diff where
+module Algebra.CAS.Diff where
 
 import Algebra.CAS.Base
---import Algebra.CAS.Core
---import Algebra.CAS.Algorithm.Simplify
-
 
 diff :: Formula -> Formula -> Formula
 diff (V x') (V y') | x' == y' = C One

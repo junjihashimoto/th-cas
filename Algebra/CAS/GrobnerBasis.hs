@@ -1,7 +1,7 @@
 {-#LANGUAGE TemplateHaskell#-}
 {-#LANGUAGE QuasiQuotes#-}
 
-module Algebra.CAS.Algorithm.GrobnerBasis where
+module Algebra.CAS.GrobnerBasis where
 
 import Algebra.CAS.Base
 
