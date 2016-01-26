@@ -662,13 +662,15 @@ expand (a:/:1) = a
 expand a = a
 
 
-gcdPolynomial :: Formula -> Formula -> Maybe Formula
-gcdPolynomial a b | a == C Zero = Just b
-                  | b == C Zero = Just a
+gcdPolynomial :: Formula -> Formula -> Formula
+gcdPolynomial a b | a == 0 = b
+                  | b == 0 = a
                   | otherwise =
                       let (a',b') = if a>=b then (a,b) else (b,a)
                           r = a' `rem` b'
-                      in if  r == a' then Nothing else gcdPolynomial r b'
+                      in case r of
+                         0 -> b'
+                         _ -> if r == a' then 1 else gcdPolynomial r b'
 
 --  case lcm a b of
 --  (S (Abs v)) -> expand v

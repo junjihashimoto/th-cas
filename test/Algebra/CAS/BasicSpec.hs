@@ -74,7 +74,11 @@ spec = do
       (x**2+x)/x `shouldBe` (x**2+x):/:x
     it "-(x+y-1)+x-y-3 == -2y-2" $ do
       expand (x-y-3-(x+y-1)) `shouldBe` -2*y-2
-
+  describe "gcd" $ do
+    it "gcdPolynomial (2*x) x == x " $ do
+      gcdPolynomial (2*x) x `shouldBe`  x
+    it "gcdPolynomial (expand $ (x+y)*(x+2)) (expand $ (x+y)*(x+3)) == (x+y)" $ do
+      gcdPolynomial (expand $ (x+y)*(x+2)) (expand $ (x+y)*(x+3)) `shouldBe` (x+y)
   describe "read and show" $ do
     it "showFormula" $ do
       showFormula  (x^2+x+y) `shouldBe` "((V \"x\" :+: (V \"x\" :^: C (CI 2))) :+: V \"y\")"
