@@ -6,8 +6,8 @@ module Algebra.CAS.GrobnerBasis where
 import Algebra.CAS.Base
 
 sPolynomial :: Formula -> Formula -> Formula
-sPolynomial f g = expand $ divAll (expand $ expand $ (ca*cb)*(lcmMonomial va vb)*f) (headAdd f)
-                         - divAll (expand $ expand $ (ca*cb)*(lcmMonomial va vb)*g) (headAdd g)
+sPolynomial f g = expand $ divAll (expand $ (ca*cb)*(lcmMonomial va vb)*f) (headAdd f)
+                         - divAll (expand $ (ca*cb)*(lcmMonomial va vb)*g) (headAdd g)
   where
     (ca,va) = headV f
     (cb,vb) = headV g
@@ -19,12 +19,11 @@ allPair (x:xs) = map (\x' -> (x,x')) xs ++ allPair xs
 grobnerG :: [Formula] -> [Formula]
 grobnerG formulas = filter ((/=) 0) $ map (uncurry sPolynomial) $ allPair formulas
 
-
 grobnerBasis :: [Formula] -> [Formula]
 grobnerBasis formulas = map lc1 $ grobnerBasis' formulas $ allPair formulas
   where
     lc1 :: Formula -> Formula
-    lc1 formula = expand $ expand $ formula / ca
+    lc1 formula = expand $ formula / ca
       where
         (ca,_) = headV formula
 

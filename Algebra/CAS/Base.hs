@@ -619,7 +619,9 @@ expand :: Formula -> Formula
 expand ((a:+:b):*:c) = let (a',b',c') = (expand a,expand b,expand c) in expand (a'*c') + expand (b'*c')
 expand (a:*:(b:+:c)) = let (a',b',c') = (expand a,expand b,expand c) in expand (a'*b') + expand (a'*c')
 expand (a:+:b) = let (a',b') = (expand a,expand b) in  a'+b'
-expand (a:*:b) = let (a',b') = (expand a,expand b) in  a'*b'
+expand c@(a:*:b) = let (a',b') = (expand a,expand b)
+                       c' = a'*b'
+                   in if c==c' then c' else expand c'
 expand (a:/:1) = expand a
 expand a = a
 
