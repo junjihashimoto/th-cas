@@ -51,6 +51,6 @@ spec = do
     it "x + y = 1,x - y = 3 " $ do
       lReductions [x+y-1,x-y-3] `shouldBe` [x+y-1,2*x-4]
     it "x + y = 1,x - y = 3 == x = 2,y=-1" $ do
-      linsolve [x+y-1,x-y-3] `shouldBe` Just [(x,2),(y,-1)]
+      linsolve [x+y=:1,x-y=:3] `shouldBe` Just [(x,2),(y,-1)]
     it "x+y+z=2,x+2*y+3*z=1,2*x+y+z=2" $ do
-      linsolve [x+y+z-2,x+2*y+3*z-1,2*x+y+z-2] `shouldBe` Just [(x,0),(y,5),(z,-3)]
+      linsolve [x+y+z=:2,x+2*y+3*z=:1,2*x+y+z=:2] `shouldBe` Just [(x,0),(y,5),(z,-3)]

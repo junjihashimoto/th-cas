@@ -3,6 +3,7 @@ module Algebra.CAS.Solve where
 import Algebra.CAS.Base
 import qualified Data.Map as M
 import Control.Applicative
+import Data.List
 
 match :: Formula -- ^ pattern
        -> Formula -- ^ matched formula
@@ -78,9 +79,11 @@ solve f v = solve2 f v <|> solve1 f v
 
 linsolve :: [Formula] -- ^ formulas
          -> Maybe [(Formula,Formula)] -- ^ answer
-linsolve fs = Just $ rSolve r
+linsolve fs = if length a == length variables' then Just a else Nothing
   where
-    r = reverse $ lReductions fs
+    r = reverse $ lReductions $ reverse $ sort fs
+    a = rSolve r
+    variables' = nub $ foldr (++) [] $ map variables fs
 
 lReduction :: Formula
            -> Formula
@@ -97,7 +100,7 @@ lReduction f0 f1 =
 lReductions :: [Formula]
             -> [Formula]
 lReductions [] = []
-lReductions (f:fs) = f:lReductions (flist f fs)
+lReductions (f:fs) = f: (reverse $ sort $ lReductions (flist f fs))
   where
     flist :: Formula -> [Formula] -> [Formula]
     flist f' fs' =  map (lReduction f') fs'

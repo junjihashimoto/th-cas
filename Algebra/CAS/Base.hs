@@ -4,8 +4,6 @@ module Algebra.CAS.Base where
 
 import Data.String
 
---data Equation = Formula :=: Formula deriving (Show,Eq,Ord)
-
 -- | Mathematical constant expression
 data Const =
    Zero  -- ^ Zero
@@ -242,6 +240,10 @@ data Formula =
  | Formula :+: Formula
  | Formula :/: Formula
  deriving (Eq,Read)
+
+(=:) :: Formula -> Formula -> Formula
+(=:) a b = a - b
+infix 0 =:
 
 instance Ord Formula where
   compare (C a) (C b) = compare a b
@@ -511,6 +513,10 @@ instance IsString Formula where
 val ::  String ->  Formula
 val v = V v
 
+-- | Lift String to constant of Formula
+cval :: String ->  Formula
+cval v = CV v
+
 instance Enum Formula where
   succ a = a+1
   pred a = a-1
@@ -554,16 +560,6 @@ lcmMonomial' a b =
     ta = tailMul a
     tb = tailMul b
 
-
-{-
-divs :: Formula -> Formula -> Bool
-divs f g = va == lcm'
-  where
-    (ca,va) = headV f
-    (cb,vb) = headV g
-    lcm' = lcmMonomial va vb
--}
-
 reduction :: Formula -> Formula -> (Formula,Formula)
 reduction f g =
   if va == lcm'
@@ -586,7 +582,7 @@ reduction f g =
 reductions :: Formula -> [Formula] -> Formula
 reductions f [] = f
 reductions f (g:gs) =
-  let (a,b) = reduction f g
+  let (_,b) = reduction f g
   in case b of
      0 -> 0
      c -> expand $ reductions (expand c) gs
@@ -808,6 +804,8 @@ headV v' = var (firstTerm,1)
       True -> (c,v)
       False -> var (tailMul c,headMul c*v)
 
+-- | Pretty print for Formula type.
+-- Formula's show function is the same as this.
 ppr :: Formula -> String
 ppr (C Zero) = "0"
 ppr (C One) = "1"
@@ -856,6 +854,8 @@ ppr' c = "(" ++ ppr c ++ ")"
 instance Show Formula where
   show = ppr
 
+-- | This print shows bare structure of Formula type.
+-- This string can be read by Formula's read function.
 showFormula :: Formula -> String
 showFormula (C a) = "C (" ++ show a ++")"
 showFormula Pi = "Pi"

@@ -5,6 +5,14 @@ module Algebra.CAS.Diff where
 
 import Algebra.CAS.Base
 
+-- | Partial derivative
+-- >>> let [x,y] = map V ["x","y"]
+-- >>> diff (x*y) x
+-- y
+-- >>> diff (sin(x)*y) x
+-- y*(cos(x))
+-- >>> diff (x^3) x
+-- 3*(x^2)
 diff :: Formula -> Formula -> Formula
 diff (V x') (V y') | x' == y' = C One
                    | otherwise = C Zero
