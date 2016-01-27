@@ -5,6 +5,7 @@ module Algebra.CAS.Integrate where
 
 import Algebra.CAS.Base
 import Algebra.CAS.Diff
+import Data.List(nub)
 
 -- | integrate function
 -- >>> let x = V "x"
@@ -33,13 +34,53 @@ integrate (V x) (V y) | x == y     = (V x) ** 2 / 2
 
 integrate a b = error $ "can not parse : " ++ show a ++ " ##  " ++ show b
 
-indets :: Formula -> [Formula]
-indets _ = []
 
---genVariables :: [Formula] -> 
+-- | Find indeterminates of an expression
+-- >>> let [x,y,z] = map V ["x","y","z"]
+-- >>> indets (x*y+z/x)
+-- [x,y,z]
+-- >>> indets (3*x^2-x*y-y^2)
+-- [x,y]
+-- >>> indets (sin(x)*cos(x)**2)
+-- [sin(x),x,cos(x)]
+indets :: Formula ->  [Formula]
+indets = nub.indets'
+
+indets' :: Formula ->  [Formula]
+indets' (C _) = []
+indets' (CV _) = []
+indets' a@(V _) = [a]
+indets' a@(S (Sin v)) = a:indets' v
+indets' a@(S (Cos v)) = a:indets' v
+indets' a@(S (Tan v)) = a:indets' v
+indets' a@(S (Sinh v)) = a:indets' v
+indets' a@(S (Cosh v)) = a:indets' v
+indets' a@(S (Tanh v)) = a:indets' v
+indets' a@(S (Asin v)) = a:indets' v
+indets' a@(S (Acos v)) = a:indets' v
+indets' a@(S (Atan v)) = a:indets' v
+indets' a@(S (Asinh v)) = a:indets' v
+indets' a@(S (Acosh v)) = a:indets' v
+indets' a@(S (Atanh v)) = a:indets' v
+indets' a@(S (Exp v)) = a:indets' v
+indets' a@(S (Log v)) = a:indets' v
+indets' a@(S (Abs v)) = a:indets' v
+indets' a@(S (Sig v)) = a:indets' v
+indets' a@(S (LogBase v0 v1)) = a:indets' v0 ++  a:indets' v1
+indets' Pi = []
+indets' I = []
+indets' a@(S (Sqrt v)) = a:indets' v
+indets' a@(S (Diff v0 v1)) = (a:indets' v0) ++  indets' v1
+indets' a@(S (Integrate v0 v1)) = (a:indets' v0) ++  indets' v1
+indets' (v0 :^: v1) = indets' v0 ++  indets' v1
+indets' (v0 :*: v1) = indets' v0 ++  indets' v1
+indets' (v0 :+: v1) = indets' v0 ++  indets' v1
+indets' (v0 :/: v1) = indets' v0 ++  indets' v1
+
+--genIndets' :: [Formula] -> 
 
 terms :: Formula -> Formula -> [Formula]
-terms f v = (indets f) ++ map (\f -> diff f v) (indets f)
+terms f v = (indets' f) ++ map (\f -> diff f v) (indets f)
 
 --derivativeTerms :: Formula -> Formula -> [Formula]
 --derivativeTerms f v = 
