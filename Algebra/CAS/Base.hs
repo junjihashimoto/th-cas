@@ -3,6 +3,7 @@
 module Algebra.CAS.Base where
 
 import Data.String
+import Data.List(nub)
 
 -- | Mathematical constant expression
 data Const =
@@ -562,10 +563,13 @@ lcmMonomial' a b =
 
 reduction :: Formula -> Formula -> (Formula,Formula)
 reduction f g =
-  if va == lcm'
+  if va == vl
   then
-    let (a,b) = reduction (expand (f - c*g)) g
-    in (c+a,b)
+    if va == 1
+    then (ca/cb,0)
+    else
+      let (a,b) = reduction (expand (f - c*g)) g
+      in (c+a,b)
   else
     case mt of
     0 -> (0,h)
@@ -575,6 +579,7 @@ reduction f g =
     (ca,va) = headV f
     (cb,vb) = headV g
     lcm' = lcmMonomial va vb
+    (cl,vl) = headV lcm'
     h = headAdd f
     mt = tailAdd f
     c = (lcm' / vb)*ca/cb
@@ -598,14 +603,36 @@ instance Integral Formula where
   toInteger (C (CI a)) = toInteger a
   toInteger a = error $ "can not do toInteger:" ++ show a
 
-degree :: Formula -> (Integer,Maybe Formula,Formula)
-degree (a:*:(b:^:(C (CI c)))) = (c,Just b,a)
-degree (b:^:(C (CI c))) = (c,Just b,C One)
-degree b@(V _) = (1,Just b,C One)
-degree (_:*:b) = degree b
-degree (_:+:b) = degree b
-degree a  | isConst a = (0,Nothing,a)
-          | otherwise = error $ "abort degree operation:" ++ show a
+degree :: Formula -> Formula
+degree (C _) = 0
+degree (CV _) = 0
+degree (V _) = 1
+degree (S (Sin v)) = degree v
+degree (S (Cos v)) = degree v
+degree (S (Tan v)) = degree v
+degree (S (Sinh v)) = degree v
+degree (S (Cosh v)) = degree v
+degree (S (Tanh v)) = degree v
+degree (S (Asin v)) = degree v
+degree (S (Acos v)) = degree v
+degree (S (Atan v)) = degree v
+degree (S (Asinh v)) = degree v
+degree (S (Acosh v)) = degree v
+degree (S (Atanh v)) = degree v
+degree (S (Exp v)) = degree v
+degree (S (Log v)) = degree v
+degree (S (Abs v)) = degree v
+degree (S (Sig v)) = degree v
+degree (S (LogBase v0 v1)) = max (degree v0) (degree v1)
+degree Pi = 0
+degree I = 0
+degree (S (Sqrt v)) = degree v
+degree (S (Diff v0 v1)) = max (degree v0) (degree v1)
+degree (S (Integrate v0 v1)) =  max (degree v0) (degree v1)
+degree (v0 :^: v1) = v1 * degree v0
+degree (v0 :*: v1) = max (degree v0) (degree v1)
+degree (v0 :+: v1) = max (degree v0) (degree v1)
+degree (v0 :/: v1) = max (degree v0) (degree v1)
 
 
 converge ::  (Formula ->  Formula) -> Formula -> Formula
@@ -673,11 +700,54 @@ tailDiv (a :/: _) = Just a
 tailDiv _ = Nothing
 
 
-subst :: [(Formula,Formula)] -> Formula -> Formula
+-- | substitute expression
+-- 
+-- >>> let [x,y,z] = map V ["x","y","z"]
+-- >>> subst [(x,3),(y,5)] $ x+y
+-- 8
+-- >>> subst [(tan(x),z)] (tan(x)**2+1)
+-- 1 + z^2
+subst :: [(Formula,Formula)] -- ^ List of tuple(orignal term, new term)
+      -> Formula  -- ^ original formula
+      -> Formula  -- ^ replaced formula
 subst [] formula = formula
-subst ((org,mod'):other) formula = subst other $ mapFormula func formula
-  where
-    func v = if v == org then mod' else v
+subst ((org,mod'):other) formula = subst other $ subst' org mod' formula
+
+subst' :: Formula -> Formula -> Formula -> Formula
+subst' org new formula =
+  if org == formula
+  then new
+  else case formula of
+         a@(C _) -> a
+         a@(CV _) -> a
+         a@Pi -> a
+         a@I -> a
+         a@(V _) -> a
+         (S (Sin v)) -> S $ Sin $ subst' org new v
+         (S (Cos v)) -> S $ Cos $ subst' org new v
+         (S (Tan v)) -> S $ Tan $ subst' org new v
+         (S (Sinh v)) -> S $ Sinh $ subst' org new v
+         (S (Cosh v)) -> S $ Cosh $ subst' org new v
+         (S (Tanh v)) -> S $ Tanh $ subst' org new v
+         (S (Asin v)) -> S $ Asin $ subst' org new v
+         (S (Acos v)) -> S $ Acos $ subst' org new v
+         (S (Atan v)) -> S $ Atan $ subst' org new v
+         (S (Asinh v)) -> S $ Asinh $ subst' org new v
+         (S (Acosh v)) -> S $ Acosh $ subst' org new v
+         (S (Atanh v)) -> S $ Atanh $ subst' org new v
+         (S (Exp v)) -> S $ Exp $ subst' org new v
+         (S (Log v)) -> S $ Log $ subst' org new v
+         (S (Abs v)) -> S $ Abs $ subst' org new v
+         (S (Sig v)) -> S $ Sig $ subst' org new v
+         (S (LogBase v1 v2)) -> S $ LogBase (subst' org new v1) (subst' org new v2)
+         (S (Sqrt v)) -> S $ Sqrt $ subst' org new v
+         (S (Diff v1 v2)) -> S $ Diff (subst' org new v1) (subst' org new v2)
+         (S (Integrate v1 v2)) -> S $ Integrate (subst' org new v1) (subst' org new v2)
+         (a:^:b) -> subst' org new a ** subst' org new b
+         (a:*:b) -> subst' org new a * subst' org new b
+         (a:+:b) -> subst' org new a + subst' org new b
+         (a:/:b) -> subst' org new a / subst' org new b
+
 
 mapFormula :: (Formula -> Formula) -> Formula -> Formula
 mapFormula conv a@(C _) = conv a
@@ -710,8 +780,10 @@ mapFormula conv (a:*:b) = mapFormula conv a * mapFormula conv b
 mapFormula conv (a:+:b) = mapFormula conv a + mapFormula conv b
 mapFormula conv (a:/:b) = mapFormula conv a / mapFormula conv b
 
+
 -- | When formula does not include variable,
 -- isConst returns True.
+-- 
 -- >>> let x = "x" :: Formula
 -- >>> isConst x
 -- False
@@ -797,7 +869,8 @@ numer (a :*: (b:/:_)) = a * b
 numer (a:/:_) = a
 numer a = a
 
-headV :: Formula -> (Formula,Formula)
+headV :: Formula -- ^ formula
+      -> (Formula,Formula) -- ^ (coefficient of first term,variables of first term)
 headV v' = var (firstTerm,1)
   where
     firstTerm = headAdd v'
@@ -870,3 +943,88 @@ showFormula (a:*:b) = "(" ++ showFormula a ++" :*: "++ showFormula b ++")"
 showFormula (a:+:b) = "(" ++ showFormula a ++" :+: "++ showFormula b ++")"
 showFormula (a:/:b) = "(" ++ showFormula a ++" :/: "++ showFormula b ++")"
 
+
+
+genCoeff :: String -> Int -> [Formula]
+genCoeff prefix a = genCoeff' prefix a
+  where
+    len = fromIntegral (round (logBase 10 (fromIntegral a))) :: Int
+    nstr n =
+      let str = show n
+          l = length str
+      in take (len-l) (repeat '0') ++ str
+    genCoeff' prefix a | a <=0 = []
+                       | otherwise = CV (prefix ++ nstr (pred a)) : genCoeff' prefix (pred a)
+
+
+-- | Find indeterminates of an expression
+-- 
+-- >>> let [x,y,z] = map V ["x","y","z"]
+-- >>> indets (x*y+z/x)
+-- [x,y,z]
+-- >>> indets (3*x^2-x*y-y^2)
+-- [x,y]
+-- >>> indets (sin(x)*cos(x)**2)
+-- [sin(x),x,cos(x)]
+indets :: Formula ->  [Formula]
+indets = nub.indets'
+
+indets' :: Formula ->  [Formula]
+indets' (C _) = []
+indets' (CV _) = []
+indets' a@(V _) = [a]
+indets' a@(S (Sin v)) = a:indets' v
+indets' a@(S (Cos v)) = a:indets' v
+indets' a@(S (Tan v)) = a:indets' v
+indets' a@(S (Sinh v)) = a:indets' v
+indets' a@(S (Cosh v)) = a:indets' v
+indets' a@(S (Tanh v)) = a:indets' v
+indets' a@(S (Asin v)) = a:indets' v
+indets' a@(S (Acos v)) = a:indets' v
+indets' a@(S (Atan v)) = a:indets' v
+indets' a@(S (Asinh v)) = a:indets' v
+indets' a@(S (Acosh v)) = a:indets' v
+indets' a@(S (Atanh v)) = a:indets' v
+indets' a@(S (Exp v)) = a:indets' v
+indets' a@(S (Log v)) = a:indets' v
+indets' a@(S (Abs v)) = a:indets' v
+indets' a@(S (Sig v)) = a:indets' v
+indets' a@(S (LogBase v0 v1)) = a:indets' v0 ++  a:indets' v1
+indets' Pi = []
+indets' I = []
+indets' a@(S (Sqrt v)) = a:indets' v
+indets' a@(S (Diff v0 v1)) = (a:indets' v0) ++  indets' v1
+indets' a@(S (Integrate v0 v1)) = (a:indets' v0) ++  indets' v1
+indets' (v0 :^: v1) = indets' v0 ++  indets' v1
+indets' (v0 :*: v1) = indets' v0 ++  indets' v1
+indets' (v0 :+: v1) = indets' v0 ++  indets' v1
+indets' (v0 :/: v1) = indets' v0 ++  indets' v1
+
+maskVariables :: Formula -- ^ Original formula which is not masked
+              -> Formula -- ^ Not masked variable
+              -> (Formula, (Formula -> Formula)) -- ^ (masked formula, reverse function)
+maskVariables f x =
+  let vs = filter ((/=) x) $ variables f
+      toCV (V v) = (CV v)
+      toCV a = a
+      toV (CV v) = (V v)
+      toV a = a
+      v2cv = zip vs (map toCV vs)
+      cv2v = zip (map toCV vs) (map toV vs)
+      f' = subst v2cv f
+  in (f',subst cv2v)
+
+
+-- | Greatest common divisor of the coefficients of formula with respect to variable of second function-args
+--
+-- >>> let [x,y] = map V ["x","y"]
+-- >>> content (-4*x*y+6*y^2) x
+-- ((-4)*y,x + (3/-2)*y)
+content :: Formula -- ^ formula
+        -> Formula -- ^ variable
+        -> (Formula,Formula) -- ^ (gcd-result,formula/gcd-result)
+content f x =
+  let (f',rev) = maskVariables (expand f) x
+      (c,_) = headV f'
+      gcdr = gcdPolynomial f (rev c)
+  in (gcdr,f `quot` gcdr)

@@ -6,6 +6,7 @@ module Algebra.CAS.Diff where
 import Algebra.CAS.Base
 
 -- | Partial derivative
+-- 
 -- >>> let [x,y] = map V ["x","y"]
 -- >>> diff (x*y) x
 -- y
@@ -26,6 +27,7 @@ diff (x :^: C (CI n)) z = (fromIntegral n) * (x ** (fromIntegral (n-1))) * (diff
 diff (S (Sin x')) y' = (S (Cos x')) * (diff x' y')
 diff (S (Cos x')) y' = - ((S (Sin x')) * (diff x' y'))
 diff (S (Exp x')) y' = (S (Exp x')) * (diff x' y')
+diff a@(S (Tan x')) y' =  ( a**2 + 1 )* (diff x' y')
 
 diff (C _) _ = C Zero
 diff Pi _ = C Zero
