@@ -76,10 +76,21 @@ solve :: Formula -- ^ formula
       -> Maybe [Formula] -- ^ answer
 solve f v = solve2 f v <|> solve1 f v
 
+[a0,a1,a2,a3,a4,a5,a6,a7,a8,a9] = reverse $ genCoeff "a" 10
+prob = [a6,2*a9,-1 + a8 + (-1)*a1,(-1)*a7,(-1)*a4,a3 + a7,a8,(-2)*a2 + 2*a5,a4]
 
+-- | solve linear equations
+-- >>> let [a0,a1,a2,a3,a4,a5,a6,a7,a8,a9] = reverse $ genVars "a" 10
+-- >>> let equations = [a6,2*a9,-1 + a8 + (-1)*a1,(-1)*a7,(-1)*a4,a3 + a7,a8,(-2)*a2 + 2*a5,a4]
+-- >>> equations
+-- [a6,2*a9,-1 + (-1)*a1 + a8,(-1)*a7,(-1)*a4,a3 + a7,a8,(-2)*a2 + 2*a5,a4]
+-- >>> linsolve [head equations]
+-- Just [(a6,0)]
+-- >>> linsolve $ equations ++ [a0,a2]
+-- Just [(a0,0),(a1,-1),(a2,0),(a3,0),(a4,0),(a5,0),(a6,0),(a7,0),(a8,0),(a9,0)]
 linsolve :: [Formula] -- ^ formulas
-         -> Maybe [(Formula,Formula)] -- ^ answer
-linsolve fs = if length a == length variables' then Just a else Nothing
+         -> Maybe [(Formula,Formula)] -- ^ answer (varible,value)
+linsolve fs = if length a == length variables' then Just (sort a) else Nothing
   where
     r = reverse $ lReductions $ reverse $ sort fs
     a = rSolve r
@@ -108,10 +119,10 @@ lReductions (f:fs) = f: (reverse $ sort $ lReductions (flist f fs))
 rSolve :: [Formula] -> [(Formula,Formula)]
 rSolve [] = []
 rSolve (f:fs) =
-  case a of
-  Just [a'] -> (v,a'): rSolve (map (subst [(v,a')]) fs)
-  Just _ -> error "error"
-  Nothing -> []
-  where
-    a = solve1 f v
-    v = head $ variables f
+  case variables f of
+    [] -> rSolve fs
+    v':_ ->
+      case solve1 f v' of
+        Just [a'] -> (v',a'): rSolve (map (subst [(v',a')]) fs)
+        Just _ -> error "error"
+        Nothing -> []

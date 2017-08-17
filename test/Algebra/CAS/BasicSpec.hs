@@ -70,12 +70,16 @@ spec = do
       x/x `shouldBe` 1
     it "x*y/x == y" $ do
       x*y/x `shouldBe` y
+    it "y/x*x == y" $ do
+      (y/x)*x `shouldBe` y
     it "y*x**2*z/x == x*y*z" $ do
       y*x**2*z/x `shouldBe` x*y*z
     it "(x**2+x)/x == (x**2+x):/:x" $ do
       (x**2+x)/x `shouldBe` (x**2+x):/:x
     it "-(x+y-1)+x-y-3 == -2y-2" $ do
       expand (x-y-3-(x+y-1)) `shouldBe` -2*y-2
+--    it " ((2*x)/(y))*(-1)*y == -2x" $ do
+--      expand (((2*x)/(y))*(-1)*y) `shouldBe` -2*x
   describe "gcd" $ do
     it "gcdPolynomial (2*x) x == x " $ do
       gcdPolynomial (2*x) x `shouldBe`  x

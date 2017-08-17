@@ -353,7 +353,11 @@ insertPlus a'@(a:+:b) v | v <= b = insertPlus a v :+: b
 insertPlus a v | a <= v = a :+: v
                | otherwise = v :+: a
 
-
+-- | try simplification for multiply
+-- 
+-- >>> let [x,y] = map V ["x","y"]
+-- >>> tryMul (x**(-1)) x
+-- Just 1
 tryMul :: Formula -> Formula -> Maybe Formula
 tryMul I I = Just $ C neg
 tryMul (C Zero) _ = Just $ C Zero
@@ -363,12 +367,14 @@ tryMul a (C One) = Just $ a
 tryMul (C a) (C b) = Just $ C (a*b)
 tryMul a@(V _) b@(V _) | a == b = Just $ a :^: (C (CI 2))
                        | otherwise = Nothing
-tryMul (a@(V _):^: b@_) (c@(V _):^:d@_) | a == c = Just $ a :^: (b+d)
+tryMul (a@(V _):^: b@_) (c@(V _):^:d@_) | a == c = Just $ if b+d==0 then 1 else a :^: (b+d)
                                         | otherwise = Nothing
-tryMul a@(V _) (c@(V _):^:d@_) | a == c = Just $ a :^: (1+d)
+tryMul a@(V _) (c@(V _):^:d@_) | a == c = Just $ if 1+d == 0 then 1 else  a :^: (1+d)
                                | otherwise = Nothing
-tryMul (a@(V _):^: b@_) c@(V _) | a == c = Just $ a :^: (b+1)
+tryMul (a@(V _):^: b@_) c@(V _) | a == c = Just $ if b+1 == 0 then 1 else a :^: (b+1)
                                 | otherwise = Nothing
+tryMul (a@(V _):/: b) c | b == c = Just $ a
+                        | otherwise = Nothing
 tryMul (a:*:b) c = 
   case tryMul b c of
   Nothing ->
@@ -471,7 +477,7 @@ instance Fractional Formula where
   fromRational 1 = C One
   fromRational a = C $ CR (fromRational a)
   recip a = (/) (C One) a
-  (/) = divGB
+  (/) a b = divGB a b
 
 instance Floating Formula where
   pi = Pi
@@ -685,6 +691,15 @@ mapAdd func formula =
     h = headAdd formula
     t = tailAdd formula
 
+splitAdd :: Formula -> [Formula]
+splitAdd formula =
+  case t of
+  0 -> [h]
+  _ -> h:(splitAdd t)
+  where
+    h = headAdd formula
+    t = tailAdd formula
+
 headMul :: Formula -> Formula
 headMul (_ :*: ab) = ab
 headMul ab = ab
@@ -694,6 +709,7 @@ tailMul _ = 1
 
 headDiv :: Formula -> Formula
 headDiv (_ :/: ab) = ab
+
 headDiv ab = ab
 tailDiv :: Formula -> Maybe Formula
 tailDiv (a :/: _) = Just a
@@ -953,8 +969,20 @@ genCoeff prefix a = genCoeff' prefix a
       let str = show n
           l = length str
       in take (len-l) (repeat '0') ++ str
-    genCoeff' prefix a | a <=0 = []
-                       | otherwise = CV (prefix ++ nstr (pred a)) : genCoeff' prefix (pred a)
+    genCoeff' prefix' a' | a' <=0 = []
+                         | otherwise = CV (prefix' ++ nstr (pred a')) : genCoeff' prefix' (pred a')
+
+
+genVars :: String -> Int -> [Formula]
+genVars prefix a = gen' prefix a
+  where
+    len = fromIntegral (round (logBase 10 (fromIntegral a))) :: Int
+    nstr n =
+      let str = show n
+          l = length str
+      in take (len-l) (repeat '0') ++ str
+    gen' prefix' a' | a' <=0 = []
+                    | otherwise = V (prefix' ++ nstr (pred a')) : gen' prefix' (pred a')
 
 
 -- | Find indeterminates of an expression
