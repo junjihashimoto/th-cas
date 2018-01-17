@@ -137,6 +137,13 @@ splitCoeffAndVariable formula = merge prelist
     merge ((c0,v0):(c1,v1):xs) | v0 == v1 = merge ((c0+c1,v0):xs)
                                | otherwise = (c0,v0):(merge ((c1,v1):xs))
 
+-- | convert coefficient to variable
+-- 
+-- >>> let [a0,a1,a2,a3,a4,a5,a6,a7,a8,a9] = reverse $ genCoeff "a" 10
+-- >>> let [x,y,z] = map V ["x","y","z"]
+-- >>> let f = [(a6,1),(2*a9,x),(-1 + (-1)*a1 + a8,y),((-1)*a7,x*y),((-1)*a4,y^2),(a3 + a7,z),(a8,x*z),((-2)*a2 + 2*a5,y*z),(a4,z^2)]
+-- >>> map coeffToVariable $ map fst f
+-- [a6,2*a9,-1 + (-1)*a1 + a8,(-1)*a7,(-1)*a4,a3 + a7,a8,(-2)*a2 + 2*a5,a4]
 coeffToVariable :: Formula -> Formula
 coeffToVariable formula = mapFormula c2v formula
   where

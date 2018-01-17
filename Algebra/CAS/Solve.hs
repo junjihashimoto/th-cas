@@ -5,9 +5,18 @@ import qualified Data.Map as M
 import Control.Applicative
 import Data.List
 
+-- | compare a pair of formula and output matched variables
+-- >>> let [a,b,c] = map CV ["a","b","c"]
+-- >>> let [x,y,z] = map V ["x","y","z"]
+-- >>> match (a*x+b) (2*x+3)
+-- Just [(b,3),(a,2)]
+-- >>> match (a*x^2+b) (2*x^2+3)
+-- Just [(b,3),(a,2)]
+-- >>> match (a*x^2+b*x+c) (2*x^2+4*x+3)
+-- Just [(c,3),(b,4),(a,2)]
 match :: Formula -- ^ pattern
-       -> Formula -- ^ matched formula
-       -> Maybe [(Formula,Formula)] -- ^ matched variable pairs
+      -> Formula -- ^ matched formula
+      -> Maybe [(Formula,Formula)] -- ^ matched variable pairs
 match a b = match' a b []
   where
     match' :: Formula
