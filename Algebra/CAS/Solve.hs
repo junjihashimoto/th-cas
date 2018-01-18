@@ -14,6 +14,8 @@ import Data.List
 -- Just [(b,3),(a,2)]
 -- >>> match (a*x^2+b*x+c) (2*x^2+4*x+3)
 -- Just [(c,3),(b,4),(a,2)]
+-- >>> match (a*x^2+b*x+c) (4*x+3)
+-- Nothing
 match :: Formula -- ^ pattern
       -> Formula -- ^ matched formula
       -> Maybe [(Formula,Formula)] -- ^ matched variable pairs
@@ -85,9 +87,6 @@ solve :: Formula -- ^ formula
       -> Maybe [Formula] -- ^ answer
 solve f v = solve2 f v <|> solve1 f v
 
-[a0,a1,a2,a3,a4,a5,a6,a7,a8,a9] = reverse $ genCoeff "a" 10
-prob = [a6,2*a9,-1 + a8 + (-1)*a1,(-1)*a7,(-1)*a4,a3 + a7,a8,(-2)*a2 + 2*a5,a4]
-
 -- | solve linear equations
 -- >>> let [a0,a1,a2,a3,a4,a5,a6,a7,a8,a9] = reverse $ genVars "a" 10
 -- >>> let equations = [a6,2*a9,-1 + a8 + (-1)*a1,(-1)*a7,(-1)*a4,a3 + a7,a8,(-2)*a2 + 2*a5,a4]
@@ -105,6 +104,18 @@ linsolve fs = if length a == length variables' then Just (sort a) else Nothing
     a = rSolve r
     variables' = nub $ foldr (++) [] $ map variables fs
 
+-- | try to reduce a variable.
+-- >>> let [a,b,c] = map CV ["a","b","c"]
+-- >>> let [x,y,z] = map V ["x","y","z"]
+-- >>> let [f0,f1] = [(2*x+4*y+4),(x-2*y+1)]
+-- >>> lReduction f0 f1
+-- 3 + 2*x
+-- >>> headV (2*a*x+4*b*y+4*c)
+-- (4*b,y)
+-- >>> headV (a*x-2*b*y+c)
+-- ((-2)*b,y)
+-- >>> (a*x-2*b*y+c) - ((-2*b)/(4*b))*(2*a*x+4*b*y+4*c)
+-- c + a*x + (-2)*b*y + (-1)*(((-2)*b)/(4*b))*(4*c + 2*a*x + 4*b*y)
 lReduction :: Formula
            -> Formula
            -> Formula

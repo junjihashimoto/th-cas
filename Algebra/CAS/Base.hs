@@ -648,15 +648,84 @@ converge func v =
      then v'
      else converge func v'
 
+-- | try to reduce a variable.
+-- >>> let [a,b,c] = map CV ["a","b","c"]
+-- >>> let [x,y,z] = map V ["x","y","z"]
+-- >>> let [f0,f1] = [(2*x+4*y+4),(x-2*y+1)]
+-- >>> f0*f1
+-- (1 + x + (-2)*y)*(4 + 2*x + 4*y)
+-- >>> expand $ f0*f1
+-- 4 + 6*x + 2*(x^2) + (-4)*y + (-8)*(y^2)
+-- >>> expand $ (a*x-2*b*y+c)
+-- c + a*x + (-2)*b*y
+-- >>> expand $ - ((-2*b)/(4*b))
+-- (-1)*(((-2)*b)/(4*b))
+-- >>> expand $ - ((-2*b)/(4*b))*(2*a*x+4*b*y+4*c)
+-- (-4)*(((-2)*b)/(4*b))*c + (-2)*a*(((-2)*b)/(4*b))*x + (-4)*(((-2)*b)/(4*b))*b*y
+-- >>> expand $ (a*x-2*b*y+c) - ((-2*b)/(4*b))*(2*a*x+4*b*y+4*c)
+-- c + (-4)*c*(((-2)*b)/(4*b)) + a*x + (-2)*(((-2)*b)/(4*b))*a*x + (-4)*b*(((-2)*b)/(4*b))*y + (-2)*b*y
 expand :: Formula -> Formula
-expand ((a:+:b):*:c) = let (a',b',c') = (expand a,expand b,expand c) in expand (a'*c') + expand (b'*c')
-expand (a:*:(b:+:c)) = let (a',b',c') = (expand a,expand b,expand c) in expand (a'*b') + expand (a'*c')
-expand (a:+:b) = let (a',b') = (expand a,expand b) in  a'+b'
-expand c@(a:*:b) = let (a',b') = (expand a,expand b)
-                       c' = a'*b'
-                   in if c==c' then c' else expand c'
-expand (a:/:1) = expand a
-expand a = a
+expand f = expand' 100 f
+
+
+expand' :: Int -- ^ a number of repetition of expanding formula
+        -> Formula -- ^ original formula
+        -> Formula -- ^ expanded formula
+expand' d f | d <= 0 = f
+            | otherwise =
+  case f of
+    ((a:+:b):*:c) -> let (a',b',c') = (expand' (d-1) a,expand' (d-1) b,expand' (d-1) c) in expand' (d-1) (a'*c') + expand' (d-1) (b'*c')
+    (a:*:(b:+:c)) -> let (a',b',c') = (expand' (d-1) a,expand' (d-1) b,expand' (d-1) c) in expand' (d-1) (a'*b') + expand' (d-1) (a'*c')
+    (a:+:b) -> let (a',b') = (expand' (d-1) a,expand' (d-1) b) in  a'+b'
+    c@(a:*:b) -> let (a',b') = (expand' (d-1) a,expand' (d-1) b)
+                     c' = a'*b'
+                 in if c==c' then c' else expand' (d-1) c'
+    (a:/:1) -> expand' (d-1) a
+    a -> a
+
+expandIO :: Formula -> IO Formula
+expandIO f = do
+  print f
+  case f of
+    ((a:+:b):*:c) -> do
+      print "((a:+:b):*:c)"
+      print a
+      print b
+      print c
+      a' <- expandIO a
+      b' <- expandIO b
+      c' <- expandIO c
+      ac <- expandIO (a'*c')
+      bc <- expandIO (b'*c')
+      return $ ac + bc
+    (a:*:(b:+:c)) -> do
+      print "(a:*:(b:+:c))"
+      print a
+      print b
+      print c
+      a' <- expandIO a
+      b' <- expandIO b
+      c' <- expandIO c
+      ab <- expandIO (a'*b')
+      ac <- expandIO (a'*c')
+      return $ ab + ac
+    (a:+:b) -> do
+      print "(a:+:b)"
+      print a
+      print b
+      a' <- expandIO a
+      b' <- expandIO b
+      return $ a'+b'
+    c@(a:*:b) -> do
+      print "(a:*:b)"
+      print a
+      print b
+      a' <- expandIO a
+      b' <- expandIO b
+      let c' = a'*b'
+      if c==c' then return c' else expandIO c'
+    (a:/:1) -> return $ expand a
+    a -> return a
 
 
 gcdPolynomial :: Formula -> Formula -> Formula
