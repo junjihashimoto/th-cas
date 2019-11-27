@@ -182,9 +182,9 @@ instance Floating Const where
   acosh a = CR $ acosh $ fromRational $ toRational a
 
 toInt :: Const -> Maybe Integer
-toInt Zero = Just $ 0
-toInt One = Just $ 1
-toInt (CI a) = Just $ a
+toInt Zero = Just 0
+toInt One = Just 1
+toInt (CI a) = Just a
 toInt _ = Nothing
 
 mapTuple :: (a -> b) -> (a,a) ->  (b,b)
@@ -308,14 +308,14 @@ instance Ord Formula where
       EQ -> EQ
 
 tryPlus :: Formula -> Formula -> Maybe Formula
-tryPlus (C Zero) (C Zero) = Just $ (C Zero)
-tryPlus (C Zero) a = Just $ a
-tryPlus a (C Zero) = Just $ a
+tryPlus (C Zero) (C Zero) = Just (C Zero)
+tryPlus (C Zero) a = Just a
+tryPlus a (C Zero) = Just a
 tryPlus (C a) (C b) = Just $ C (a+b)
-tryPlus I I = Just $ (C (CI 2)) :*: I
-tryPlus a@(V _) b@(V _) | a == b = Just $ (C (CI 2)) :*: a
+tryPlus I I = Just $ C (CI 2) :*: I
+tryPlus a@(V _) b@(V _) | a == b = Just $ C (CI 2) :*: a
                         | otherwise = Nothing
-tryPlus a@(V _:^: _) b@(V _:^: _) | a == b = Just $ (C (CI 2)) :*: a
+tryPlus a@(V _:^: _) b@(V _:^: _) | a == b = Just $ C (CI 2) :*: a
                                   | otherwise = Nothing
 tryPlus (a:+:b) c =
   case tryPlus b c of
@@ -362,18 +362,18 @@ tryMul :: Formula -> Formula -> Maybe Formula
 tryMul I I = Just $ C neg
 tryMul (C Zero) _ = Just $ C Zero
 tryMul _ (C Zero) = Just $ C Zero
-tryMul (C One) a = Just $ a
-tryMul a (C One) = Just $ a
+tryMul (C One) a = Just a
+tryMul a (C One) = Just a
 tryMul (C a) (C b) = Just $ C (a*b)
-tryMul a@(V _) b@(V _) | a == b = Just $ a :^: (C (CI 2))
+tryMul a@(V _) b@(V _) | a == b = Just $ a :^: C (CI 2)
                        | otherwise = Nothing
-tryMul (a@(V _):^: b@_) (c@(V _):^:d@_) | a == c = Just $ if b+d==0 then 1 else a :^: (b+d)
+tryMul (a@(V _):^: b) (c@(V _):^:d) | a == c = Just $ if b+d==0 then 1 else a :^: (b+d)
                                         | otherwise = Nothing
-tryMul a@(V _) (c@(V _):^:d@_) | a == c = Just $ if 1+d == 0 then 1 else  a :^: (1+d)
+tryMul a@(V _) (c@(V _):^:d) | a == c = Just $ if 1+d == 0 then 1 else  a :^: (1+d)
                                | otherwise = Nothing
-tryMul (a@(V _):^: b@_) c@(V _) | a == c = Just $ if b+1 == 0 then 1 else a :^: (b+1)
+tryMul (a@(V _):^: b) c@(V _) | a == c = Just $ if b+1 == 0 then 1 else a :^: (b+1)
                                 | otherwise = Nothing
-tryMul (a@(V _):/: b) c | b == c = Just $ a
+tryMul (a@(V _):/: b) c | b == c = Just a
                         | otherwise = Nothing
 tryMul (a:*:b) c = 
   case tryMul b c of
@@ -417,10 +417,10 @@ divGB a b = conv $ (ca `constDiv` cb) * divGB' va vb
       where
         firstTerm = v'
         var (c,v) =
-          case (isConst c) of
-          True -> (c,v)
-          False -> var (tailMul c,headMul c*v)
-    conv (a':*:((C One):/:c)) = a':/:c
+          if isConst c
+          then (c,v)
+          else var (tailMul c,headMul c*v)
+    conv (a':*:(C One :/: c)) = a':/:c
     conv a' = a'
 
 divGB' :: Formula -> Formula -> Formula
@@ -755,7 +755,7 @@ mapAdd :: (Formula -> Formula) -> Formula -> Formula
 mapAdd func formula =
   case t of
   0 -> func h
-  _ -> (mapAdd func t) + (func h)
+  _ -> mapAdd func t + func h
   where
     h = headAdd formula
     t = tailAdd formula
@@ -764,7 +764,7 @@ splitAdd :: Formula -> [Formula]
 splitAdd formula =
   case t of
   0 -> [h]
-  _ -> h:(splitAdd t)
+  _ -> h : splitAdd t
   where
     h = headAdd formula
     t = tailAdd formula
@@ -960,9 +960,9 @@ headV v' = var (firstTerm,1)
   where
     firstTerm = headAdd v'
     var (c,v) =
-      case (isConst c) of
-      True -> (c,v)
-      False -> var (tailMul c,headMul c*v)
+      if isConst c
+      then (c,v)
+      else var (tailMul c,headMul c*v)
 
 -- | Pretty print for Formula type.
 -- Formula's show function is the same as this.

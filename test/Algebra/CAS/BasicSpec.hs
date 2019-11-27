@@ -33,55 +33,55 @@ spec = do
     it "sqrt(-1) == I" $ do
       let v = -1 :: Formula
       sqrt v `shouldBe` I
-    it "I*I == -1" $ do
+    it "I*I == -1" $
       I*I `shouldBe` -1
   describe "add" $ do
-    it "x<y" $ do
+    it "x<y" $
       x<y `shouldBe` True
-    it "y<x" $ do
+    it "y<x" $
       y<x `shouldBe` False
-    it "x<x**2" $ do
+    it "x<x**2" $
       x<x**2 `shouldBe` True
-    it "x>**2" $ do
+    it "x>**2" $
       x>x**2 `shouldBe` False
-    it "x+y==y+x" $ do
+    it "x+y==y+x" $
       x+y `shouldBe` y+x
-    it "x+y+y==x+2*y" $ do
+    it "x+y+y==x+2*y" $
       x+y+y `shouldBe` x+2*y
-    it "x**2+x**2+y == 2*x**2+y" $ do
+    it "x**2+x**2+y == 2*x**2+y" $
       x**2+x**2+y `shouldBe` 2*x**2+y
-    it "2*y+x+x+y == 2*x+3*y" $ do
+    it "2*y+x+x+y == 2*x+3*y" $
       2*y+x+x+y+z `shouldBe` 2*x+3*y+z
   describe "mult" $ do
-    it "x*x==x**2" $ do
+    it "x*x==x**2" $
       x*x `shouldBe` x**2
-    it "x*x**2==x**3" $ do
+    it "x*x**2==x**3" $
       x*x**2 `shouldBe` x**3
-    it "x**0=1" $ do
+    it "x**0=1" $
       x**0 `shouldBe` 1
-    it "(x+y)*y != x*y+y**2" $ do
+    it "(x+y)*y != x*y+y**2" $
       (x+y)*y ==  x*y+y**2 `shouldBe` False
-    it "expand ((x+y)*y) == x*y+y**2" $ do
+    it "expand ((x+y)*y) == x*y+y**2" $
       expand ((x+y)*y) `shouldBe` x*y+y**2 
-    it "expand (1+x)*(2+x)*((y+x)*(y+x*2)+x)" $ do
+    it "expand (1+x)*(2+x)*((y+x)*(y+x*2)+x)" $
       expand ((1+x)*(2+x)*((y+x)*(y+x*2)+x)) `shouldBe` 2*x + 7*(x^2) + 7*(x^3) + 2*(x^4) + 6*x*y + 9*(x^2)*y + 3*(x^3)*y + 2*(y^2) + 3*x*(y^2) + (x^2)*(y^2)
   describe "div" $ do
-    it "x/x==1" $ do
+    it "x/x==1" $
       x/x `shouldBe` 1
-    it "x*y/x == y" $ do
+    it "x*y/x == y" $
       x*y/x `shouldBe` y
-    it "y/x*x == y" $ do
+    it "y/x*x == y" $
       (y/x)*x `shouldBe` y
-    it "y*x**2*z/x == x*y*z" $ do
+    it "y*x**2*z/x == x*y*z" $
       y*x**2*z/x `shouldBe` x*y*z
-    it "(x**2+x)/x == (x**2+x):/:x" $ do
+    it "(x**2+x)/x == (x**2+x):/:x" $
       (x**2+x)/x `shouldBe` (x**2+x):/:x
-    it "-(x+y-1)+x-y-3 == -2y-2" $ do
+    it "-(x+y-1)+x-y-3 == -2y-2" $
       expand (x-y-3-(x+y-1)) `shouldBe` -2*y-2
 --    it " ((2*x)/(y))*(-1)*y == -2x" $ do
 --      expand (((2*x)/(y))*(-1)*y) `shouldBe` -2*x
   describe "gcd" $ do
-    it "gcdPolynomial (2*x) x == x " $ do
+    it "gcdPolynomial (2*x) x == x " $
       gcdPolynomial (2*x) x `shouldBe`  x
     it "gcdPolynomial (expand $ (x+y)*(x+2)) (expand $ (x+y)*(x+3)) == (x+y)" $ do
       gcdPolynomial (expand $ (x+y)*(x+2)) (expand $ (x+y)*(x+3)) `shouldBe` (x+y)
