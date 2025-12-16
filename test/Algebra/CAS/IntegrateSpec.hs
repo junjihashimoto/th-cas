@@ -68,6 +68,12 @@ spec = do
       let res = integrate f x
       expand (diff res x) `shouldBe` f
 
+  describe "integrate (Risch-Norman Heuristic)" $ do
+    it "integrates x * exp(x)" $ do
+      let f = x * exp(x)
+      let res = integrate f x
+      expand (diff res x) `shouldBe` f
+
   describe "Helper Functions" $ do
     it "Extended Euclidean: gcd(x^2, x) = x" $ do
       let (g, s, t) = extendedEuclidean (x^2) x x

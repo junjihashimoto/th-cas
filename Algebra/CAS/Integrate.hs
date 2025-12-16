@@ -53,9 +53,8 @@ integrate f v = integrateFormula f v
                   then integrateRational f' var
                   else error $ "integrate: cannot integrate " ++ show f'
 
-    -- Fallback: not implemented
-    integrateFormula f' var =
-      error $ "integrate: not implemented for " ++ show f' ++ " with respect to " ++ show var
+    -- Fallback: try Risch-Norman heuristic
+    integrateFormula f' var = rischNorman' f' var
 
 -- | Check if formula is a rational function in x (contains only arithmetic and powers of x)
 isRational :: Formula -> Formula -> Bool
@@ -174,11 +173,11 @@ quotRemPoly a b x = reduction a b -- Reuse existing reduction which is multivari
 rischNorman' :: Formula -> Formula -> Formula
 rischNorman' f x =
   case solvedCoeffs of
-    Just sol -> simplifyResult $ subst sol candidate
+    Just sol -> simplifyResult $ subst (convertSolution sol) candidate
     Nothing  -> error $ "integrate // Risch-Norman heuristic failed for: " ++ show f
   where
     -- 1. Identify basis kernels (indeterminates + their derivatives)
-    ids = nub (x : indets f) ++ indets (diff f x)
+    ids = nub $ (x : indets f) ++ indets (diff f x)
 
     -- 2. Determine degree for the Ansatz
     d = candidateDegree f x
@@ -199,6 +198,10 @@ rischNorman' f x =
 
     -- 7. Solve the linear system
     solvedCoeffs = linsolve linearSystem
+
+    -- Convert V variables from linsolve to CV variables for candidate
+    convertSolution :: [(Formula, Formula)] -> [(Formula, Formula)]
+    convertSolution = map (\(V name, val) -> (CV name, val))
 
     simplifyResult (C Zero) = C Zero
     simplifyResult res = expand res
