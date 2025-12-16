@@ -1,1 +1,17 @@
-{-# OPTIONS_GHC -F -pgmF hspec-discover #-}
+module Main (main) where
+
+import Test.Hspec
+
+import qualified Algebra.CAS.THSpec
+import qualified Algebra.CAS.BasicSpec
+import qualified Algebra.CAS.DiffSpec
+import qualified Algebra.CAS.SolveSpec
+import qualified Algebra.CAS.GrobnerBasisSpec
+
+main :: IO ()
+main = hspec $ do
+  Algebra.CAS.THSpec.spec
+  Algebra.CAS.BasicSpec.spec
+  Algebra.CAS.DiffSpec.spec
+  Algebra.CAS.SolveSpec.spec
+  Algebra.CAS.GrobnerBasisSpec.spec
