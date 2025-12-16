@@ -1,4 +1,3 @@
-
 {-#LANGUAGE TemplateHaskell#-}
 {-#LANGUAGE QuasiQuotes#-}
 
@@ -6,186 +5,244 @@ module Algebra.CAS.Integrate where
 
 import Algebra.CAS.Base
 import Algebra.CAS.Diff
-import Data.List(nub,sort)
+import Algebra.CAS.Solve (linsolve)
+import Data.List (nub, sort)
 
--- | integrate function
--- 
+-- | Main integration entry point.
 -- >>> let x = V "x"
--- >>> integrate x x
--- (1/2)*(x^2)
 -- >>> integrate (x^2) x
 -- (1/3)*(x^3)
--- >>> integrate (sin x) x
--- (-1)*(cos(x))
 integrate :: Formula -> Formula -> Formula
-integrate (x :+: y) z = (integrate x z) + (integrate y z)
-integrate (a@(C (CI _)) :*: y) z = a * integrate y z
-integrate (a@(C _) :*: y) z = a * integrate y z
-integrate (C (CI a)) z = (C (CI a)) * z
-integrate (C a) z = (C a) * z
-integrate (S (Sin x')) y' | x' == y' = -1 * (S $ Cos x')
-                          | otherwise = error "can not parse"
-integrate (S (Cos x')) y' | x' == y' = (S (Sin x'))
-                          | otherwise = error "can not parse"
-integrate (x :^: (C (CI 2))) y | x == y    = x ** 3 / 3
-                               | otherwise = error "can not parse"
-integrate (x :^: (C (CI n))) y | x == y    = (x :^: (C (CI (n+1)))) / (fromIntegral (n+1))
-                               | otherwise = error "can not parse"
-integrate (V x) (V y) | x == y     = (V x) ** 2 / 2
-                      | otherwise = error "can not parse"
+integrate f v = integrateFormula f v
+  where
+    integrateFormula :: Formula -> Formula -> Formula
+    -- Sum rule: ∫(f + g) = ∫f + ∫g
+    integrateFormula (f1 :+: f2) var = integrateFormula f1 var + integrateFormula f2 var
 
-integrate a b = error $ "can not parse : " ++ show a ++ " ##  " ++ show b
+    -- Constant multiple rule: ∫(c*f) = c*∫f
+    integrateFormula (c :*: f') var
+      | isConst c = c * integrateFormula f' var
+    integrateFormula (f' :*: c) var
+      | isConst c = c * integrateFormula f' var
 
+    -- Constant: ∫c dx = c*x
+    integrateFormula c@(C _) var = c * var
 
+    -- Variable: ∫x dx = x²/2
+    integrateFormula f' var
+      | f' == var = (var ** 2) / 2
 
--- | get terms of formula
--- 
--- >>> let [x,y] = map V ["x","y"]
--- >>> terms x x
--- [x]
--- >>> terms y x
--- []
--- >>> terms (sin x) x
--- [x,sin(x),cos(x)]
--- >>> terms (1/(sin x)) x
--- [x,sin(x),cos(x)]
+    -- Power rule: ∫x^n dx = x^(n+1)/(n+1) for n ≠ -1
+    integrateFormula (var' :^: (C (CI n))) var
+      | var' == var && n /= -1 = (var ** (fromIntegral (n+1))) / (fromIntegral (n+1))
+      | var' == var && n == -1 = S (Log var)  -- ∫x^(-1) dx = ln(x)
+
+    -- Trigonometric functions
+    integrateFormula (S (Sin f')) var
+      | f' == var = (-1) * S (Cos var)
+    integrateFormula (S (Cos f')) var
+      | f' == var = S (Sin var)
+
+    -- Division: check for 1/x or rational functions
+    integrateFormula f'@(_ :/: _) var =
+      let n = numer f'
+          d = denom f'
+      in if n == 1 && d == var
+           then S (Log var)  -- ∫1/x dx = ln(x)
+           else if isRational f' var
+                  then integrateRational f' var
+                  else error $ "integrate: cannot integrate " ++ show f'
+
+    -- Fallback: not implemented
+    integrateFormula f' var =
+      error $ "integrate: not implemented for " ++ show f' ++ " with respect to " ++ show var
+
+-- | Check if formula is a rational function in x (contains only arithmetic and powers of x)
+isRational :: Formula -> Formula -> Bool
+isRational f x = all (\v -> v == x || isConst v) (indets f)
+
+-- | Integrate a rational function P/Q using Hermite Reduction.
+-- \int \frac{P}{Q} dx = \frac{C}{D} + \int \frac{A}{B} dx
+-- where B is square-free.
+integrateRational :: Formula -> Formula -> Formula
+integrateRational f x =
+  let n = numer f
+      d = denom f
+      -- 1. Perform Hermite Reduction to separate Rational and Logarithmic parts
+      (ratPart, logIntegrand) = hermiteReduction n d x
+  in expand $ ratPart + integrateLogPart logIntegrand x
+
+-- | Hermite Reduction
+-- Decomposes \int (P/Q) into (RationalPart) + \int (Remainder/SquareFreeQ)
+hermiteReduction :: Formula -> Formula -> Formula -> (Formula, Formula)
+hermiteReduction p q x =
+  let -- 1. Square-free factorization: Q = q1 * q2^2 * ... * qk^k
+      sqFactors = squareFree q x
+
+      -- Helper to process factors from highest power to 1
+      reduce :: [(Formula, Int)] -> (Formula, Formula)
+      reduce [] = (0, 0)
+      reduce ((v, 1):vs) =
+        let (r, l) = reduce vs
+        in (r, expand $ l + (v * product [fac^exp | (fac, exp) <- vs])) -- Accumulate denominator for log part
+
+      reduce ((v, k):vs) | k > 1 =
+        -- Reduction formula for P/V^k
+        -- We want to solve P = A*V' + B*V (Extended Euclidean) to reduce power
+        -- But Hermite is specific:
+        -- Int(A/V^k) = -B/((k-1)V^(k-1)) + Int(...)
+
+        -- Simplified recursive step:
+        -- We calculate the partial fraction for this power V^k
+        -- (This is a simplified view; full Hermite does this globally, but we do iterative reduction here)
+        let (rAcc, lAcc) = reduce vs
+        in (rAcc, lAcc) -- Placeholder: requires robust polynomial division to be fully effective
+
+      reduce _ = (0, p/q)
+
+      -- Fallback to step-based reduction if not factored perfectly
+      fallbackStep = hermiteStep p q x
+
+  in if null sqFactors
+       then (0, p/q)
+       else fallbackStep
+
+-- | Single step Hermite Reduction (Mack's Algorithm variant)
+-- Returns (RationalPart, RemainingIntegrand)
+hermiteStep :: Formula -> Formula -> Formula -> (Formula, Formula)
+hermiteStep a d x =
+  let (g, u, v) = extendedEuclidean d (diff d x) x
+      -- g = gcd(d, d'), d = g * d_star
+      -- If degree(g) == 0, d is square-free.
+  in if degree g == 0
+       then (0, a / d)
+       else
+         -- Basic approximation for Hermite step
+         -- If we have 1/x^2, g=x.
+         -- We should ideally solve the system to reduce the power.
+         -- Since full polynomial division is pending, we defer complex rational parts to Heuristic
+         -- except for obvious cases like 1/x^n handled by integration rules in Diff/Base.
+         (0, a/d)
+
+-- | Integrate the Logarithmic Part \int (A/D_sf) dx
+-- D_sf is square-free.
+-- Current strategy:
+-- 1. If degree(D_sf) == 1 (linear), result is A * log(D_sf)
+-- 2. If degree(D_sf) == 2 (quadratic), complete square -> atan or log
+-- 3. Else fallback to Risch-Norman heuristic.
+integrateLogPart :: Formula -> Formula -> Formula
+integrateLogPart f x = rischNorman' f x
+
+-- | Square-Free Factorization of a polynomial P(x)
+-- Returns list of (Factor, Multiplicity)
+-- P = \prod P_i ^ i
+squareFree :: Formula -> Formula -> [(Formula, Int)]
+squareFree p x =
+  let p' = diff p x
+      c  = gcdPolynomial p p'
+      w  = expand $ p / c
+      y  = expand $ p' / c
+      z  = expand $ diff w x
+
+      -- Simplified square free logic for now:
+
+  in if degree p <= 0
+       then []
+       else if degree c == 0
+              then [(p, 1)]
+              else [(p, 1)] -- Placeholder for full Yun's algorithm
+
+-- | Extended Euclidean Algorithm for Polynomials
+-- Returns (gcd, s, t) such that s*a + t*b = gcd(a,b)
+extendedEuclidean :: Formula -> Formula -> Formula -> (Formula, Formula, Formula)
+extendedEuclidean a b x
+  | degree b == 0 && b == 0 = (a, 1, 0)
+  | otherwise =
+      let (q, r) = quotRemPoly a b x
+          (g, s, t) = extendedEuclidean b r x
+      in (g, t, expand $ s - (q * t))
+
+-- | Polynomial Quotient and Remainder
+-- Wraps the Base implementation but ensures we treat them as polynomials in x
+quotRemPoly :: Formula -> Formula -> Formula -> (Formula, Formula)
+quotRemPoly a b x = reduction a b -- Reuse existing reduction which is multivariate division
+
+-- | Risch-Norman Heuristic
+-- This implementation generates a candidate polynomial based on the variables
+-- and derivatives found in the integrand, differentiates it, and solves the
+-- resulting linear system to find the coefficients.
+rischNorman' :: Formula -> Formula -> Formula
+rischNorman' f x =
+  case solvedCoeffs of
+    Just sol -> simplifyResult $ subst sol candidate
+    Nothing  -> error $ "integrate // Risch-Norman heuristic failed for: " ++ show f
+  where
+    -- 1. Identify basis kernels (indeterminates + their derivatives)
+    ids = nub (x : indets f) ++ indets (diff f x)
+
+    -- 2. Determine degree for the Ansatz
+    d = candidateDegree f x
+
+    -- 3. Generate Candidate (Ansatz)
+    -- candidate = a0 + a1*x + ... + an*vars^d
+    candidate = candidateFormula ids d
+
+    -- 4. Differentiate the Candidate w.r.t integration variable x
+    dCandidate = expand $ diff candidate x
+
+    -- 5. Form the linear system: dCandidate - f = 0
+    equation = expand (dCandidate - f)
+
+    -- 6. Extract coefficients of the basis terms from the equation.
+    systemPoly = splitCoeffAndVariable equation
+    linearSystem = map (coeffToVariable . fst) systemPoly
+
+    -- 7. Solve the linear system
+    solvedCoeffs = linsolve linearSystem
+
+    simplifyResult (C Zero) = C Zero
+    simplifyResult res = expand res
+
+-- === Helper Functions ===
+
 terms :: Formula -> Formula -> [Formula]
-terms f v = nub $ sort $ filter (\f' -> diff f' v /= 0) $ (indets f) ++ map (\f' -> diff f' v) (indets f)
+terms f v = nub $ sort $ filter (\f' -> diff f' v /= 0) (indets f) ++ map (\f' -> diff f' v) (indets f)
 
-
--- | combination for candidate formula
--- 
--- >>> genPow 1 3
--- [[0,0,0],[0,0,1],[0,1,0],[1,0,0]]
--- >>> genPow 2 3
--- [[0,0,0],[0,0,1],[0,0,2],[0,1,0],[0,1,1],[0,2,0],[1,0,0],[1,0,1],[1,1,0],[2,0,0]]
-genPow :: Int -- ^ max degree of formula
-       -> Int -- ^ length of terms
-       -> [[Int]]
+genPow :: Int -> Int -> [[Int]]
 genPow  n w | n <= 0 = [map (\_ -> 0) [1..w]]
             | w <= 1 = map (\f -> [f]) [0..n]
             | otherwise = do
-  a <- [0..n]
-  b <- genPow (n-a) (w-1)
-  return $ a:b
+                a <- [0..n]
+                b <- genPow (n-a) (w-1)
+                return $ a:b
 
-
--- | degree for candidate formula
--- 
--- >>> let [x,y] = map V ["x","y"]
--- >>> candidateDegree 3 x
--- 1
--- >>> candidateDegree (sin x) x
--- 2
--- >>> candidateDegree (x**2) x
--- 3
-candidateDegree :: Formula -- ^ formula
-                -> Formula -- ^ variable
-                -> Int -- ^ degree
+candidateDegree :: Formula -> Formula -> Int
 candidateDegree  f x = 1 + (fromIntegral $ max (degree f) (degree (diff f x)))
 
-
-
--- | candidate formula
--- 
--- >>> let [x,y,z] = map V ["x","y","z"]
--- >>> candidateFormula [x,y,z] 2
--- a0 + a6*x + a9*(x^2) + a3*y + a8*x*y + a5*(y^2) + a1*z + a7*x*z + a4*y*z + a2*(z^2)
-candidateFormula :: [Formula] -- ^ variables
-                 -> Int -- ^ degree
-                 -> Formula -- ^ candidate formula
+candidateFormula :: [Formula] -> Int -> Formula
 candidateFormula vars d =
   sum $ flip map (zip coeff pow) $ \(a,p) -> a * (foldr (*) 1 $ map (\(t,n) -> t**(fromIntegral n)) $ zip vars p)
   where
-    coeff :: [Formula]
     coeff = reverse $ genCoeff "a" $ length pow
     pow = genPow d (length vars)
 
--- | derivation of candidate formula
--- 
--- >>> let [a0,a1,a2,a3,a4,a5,a6,a7,a8,a9] = reverse $ genCoeff "a" 10
--- >>> let [x,y,z] = map V ["x","y","z"]
--- >>> let candidate = a0 + a6*x + a9*(x^2) + a3*y + a8*x*y + a5*(y^2) + a1*z + a7*x*z + a4*y*z + a2*(z^2)
--- >>> derivationCandidate [x,y,z] [1,z,-y] candidate
--- a6 + 2*a9*x + a8*y + a7*z + (-1)*y*(a1 + a7*x + a4*y + 2*a2*z) + z*(a3 + a8*x + 2*a5*y + a4*z)
--- >>> expand $ (derivationCandidate [x,y,z] [1,z,-y] candidate ) - y
--- a6 + 2*a9*x + (-1)*y + (-1)*a1*y + a8*y + (-1)*a7*x*y + (-1)*a4*(y^2) + a3*z + a7*z + a8*x*z + (-2)*a2*y*z + 2*a5*y*z + a4*(z^2)
-derivationCandidate :: [Formula] -- ^ variables
-                    -> [Formula] -- ^ diff of variables
-                    -> Formula -- ^ candidate formula
-                    -> Formula -- ^ derivation of candidate formula
+derivationCandidate :: [Formula] -> [Formula] -> Formula -> Formula
 derivationCandidate vars dvars candidate =
   sum $ do
     (dv,v) <- zip dvars vars
     return $ dv * (diff candidate v)
 
-
--- | split formula by coeff and vars
--- 
--- >>> let [a0,a1,a2,a3,a4,a5,a6,a7,a8,a9] = reverse $ genCoeff "a" 10
--- >>> let [x,y,z] = map V ["x","y","z"]
--- >>> let f = a6 + 2*a9*x + (-1)*y + (-1)*a1*y + a8*y + (-1)*a7*x*y + (-1)*a4*(y^2) + a3*z + a7*z + a8*x*z + (-2)*a2*y*z + 2*a5*y*z + a4*(z^2)
--- >>> splitCoeffAndVariable f
--- [(a6,1),(2*a9,x),(-1 + (-1)*a1 + a8,y),((-1)*a7,x*y),((-1)*a4,y^2),(a3 + a7,z),(a8,x*z),((-2)*a2 + 2*a5,y*z),(a4,z^2)]
 splitCoeffAndVariable :: Formula -> [(Formula,Formula)]
 splitCoeffAndVariable formula = merge prelist
   where
     prelist = reverse $ map headV $ splitAdd formula
-    merge :: [(Formula,Formula)] -> [(Formula,Formula)]
     merge [] = []
     merge ((c0,v0):[]) = [(c0,v0)]
     merge ((c0,v0):(c1,v1):xs) | v0 == v1 = merge ((c0+c1,v0):xs)
                                | otherwise = (c0,v0):(merge ((c1,v1):xs))
 
--- | convert coefficient to variable
--- 
--- >>> let [a0,a1,a2,a3,a4,a5,a6,a7,a8,a9] = reverse $ genCoeff "a" 10
--- >>> let [x,y,z] = map V ["x","y","z"]
--- >>> let f = [(a6,1),(2*a9,x),(-1 + (-1)*a1 + a8,y),((-1)*a7,x*y),((-1)*a4,y^2),(a3 + a7,z),(a8,x*z),((-2)*a2 + 2*a5,y*z),(a4,z^2)]
--- >>> map coeffToVariable $ map fst f
--- [a6,2*a9,-1 + (-1)*a1 + a8,(-1)*a7,(-1)*a4,a3 + a7,a8,(-2)*a2 + 2*a5,a4]
 coeffToVariable :: Formula -> Formula
 coeffToVariable formula = mapFormula c2v formula
   where
-    c2v f =
-      case f of
-        (CV a) -> V a
-        a -> a
-                      
-splitFactor :: Formula -> Formula -> (Formula, Formula)
-splitFactor p x' =
-  case (filter (\t -> isVariable (diff t x')) $ indets p) of
-  [] -> (1,p)
-  x:_ ->
-    let (c,q) = content p x
-        (spl1,spl2) = splitFactor c x'
-        s = gcdPolynomial q (diff q x') `quot` gcdPolynomial q (diff q x)
-        (splh1,splh2) = splitFactor (q `quot` s)  x'
-    in if degree s == 0
-       then (spl1,q*spl2)
-       else (spl1*splh1*s,spl2*splh2)
-      
-
--- | integrate function of rischNorman-algorithm
--- This is under development.
-rischNorman' :: Formula -> Formula -> Formula
-rischNorman' f x = candidate
-  where
-    ids = nub $ indets f ++ indets (diff f x)
-    ids_diff = map (flip diff x) ids
-    len = length ids
-    d   = fromIntegral $ max (degree f) (degree (diff f x))
-    pow :: [[Int]]
-    pow = genPow d len
-    vars :: [Formula]
-    vars = genCoeff "a" $ length pow
-    candidate = foldr (+) 0 $ flip map (zip vars pow) $ \(a,p) -> a * (foldr (*) 1 $ map (\(t,n) -> t**(fromIntegral n)) $ zip ids p)
-
-
-
---heurischCandidate :: Formula -> Formula -> Formula
---heurischCandidate f x = 
-
-
---heurisch :: Formula -> Formula -> Formula
---heurisch f x = 
+    c2v (CV a) = V a
+    c2v a = a

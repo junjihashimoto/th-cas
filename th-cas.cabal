@@ -54,6 +54,7 @@ test-suite spec
                      , Algebra.CAS.DiffSpec
                      , Algebra.CAS.SolveSpec
                      , Algebra.CAS.GrobnerBasisSpec
+                     , Algebra.CAS.IntegrateSpec
   build-depends:       base
                      , th-cas
                      , hspec
