@@ -98,3 +98,39 @@ spec = do
   describe "substitute" $ do
     it "subst [(x,1),(y,2)] (x+y) = 3" $ do
       subst [(x,1),(y,2)] (x+y) `shouldBe` 3
+
+  describe "Const operations (Bug Fixes)" $ do
+    it "signum One should be CI 1 (bug fix verification)" $ do
+      signum (One :: Const) `shouldBe` CI 1
+    it "signum Zero should be CI 0" $ do
+      signum (Zero :: Const) `shouldBe` CI 0
+    it "signum (CI 5) should be CI 1" $ do
+      signum (CI 5 :: Const) `shouldBe` CI 1
+    it "signum (CI (-3)) should be CI (-1)" $ do
+      signum (CI (-3) :: Const) `shouldBe` CI (-1)
+
+  describe "degree" $ do
+    it "degree of constant is 0" $ do
+      degree (5 :: Formula) `shouldBe` 0
+    it "degree of x is 1" $ do
+      degree x `shouldBe` 1
+    it "degree of x^3 is 3" $ do
+      degree (x^3) `shouldBe` 3
+    it "degree of x^2 + y^3 is 3" $ do
+      degree (x^2 + y^3) `shouldBe` 3
+    it "degree of x*y is 1" $ do
+      degree (x*y) `shouldBe` 1
+
+  describe "numer and denom" $ do
+    it "numer of 1/x is 1" $ do
+      numer (1/x) `shouldBe` 1
+    it "denom of 1/x is x" $ do
+      denom (1/x) `shouldBe` x
+    it "numer of (x+1)/(x+2) is x+1" $ do
+      numer ((x+1)/(x+2)) `shouldBe` x+1
+    it "denom of (x+1)/(x+2) is x+2" $ do
+      denom ((x+1)/(x+2)) `shouldBe` x+2
+    it "numer of polynomial is itself" $ do
+      numer (x^2 + x + 1) `shouldBe` x^2 + x + 1
+    it "denom of polynomial is 1" $ do
+      denom (x^2 + x + 1) `shouldBe` 1

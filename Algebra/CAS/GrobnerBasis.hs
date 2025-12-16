@@ -32,7 +32,7 @@ grobnerBasis' formulas [] = formulas
 grobnerBasis' formulas ((a,b):other) =
   case reductions (sPolynomial a b) formulas of
   0 -> grobnerBasis' formulas other
-  c -> grobnerBasis (formulas++[c])
+  c -> grobnerBasis' (formulas++[c]) (other ++ allPair [c] ++ map (\f -> (c,f)) formulas)
 
 grobnerBasisIO :: [Formula] -> IO [Formula]
 grobnerBasisIO formulas = grobnerBasisIO' formulas $ allPair formulas

@@ -101,7 +101,7 @@ instance Num Const where
   abs (CF a b) = CF (abs a) (abs b)
   abs (CR a) = CR (abs a)
   signum Zero = CI 0
-  signum One  = CI (-1)
+  signum One  = CI 1
   signum (CI a) = CI (signum a)
   signum (CF a b) = CI $ signum a * signum b
   signum (CR a) = CI $ round $ signum a

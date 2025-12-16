@@ -56,6 +56,19 @@ spec = do
       linsolve [x+y=:1,x-y=:3] `shouldBe` Just [(x,2),(y,-1)]
     it "x+y+z=2,x+2*y+3*z=1,2*x+y+z=2" $ do
       linsolve [x+y+z=:2,x+2*y+3*z=:1,2*x+y+z=:2] `shouldBe` Just [(x,0),(y,5),(z,-3)]
---     it "[a6,2*a9,-1 + a8 + (-1)*a1,(-1)*a7,(-1)*a4,a3 + a7,a8,(-2)*a2 + 2*a5,a4]" $ do
---       let [a0,a1,a2,a3,a4,a5,a6,a7,a8,a9] = reverse $ genCoeff "a" 10
---       linsolve [a6,2*a9,-1 + a8 + (-1)*a1,(-1)*a7,(-1)*a4,a3 + a7,a8,(-2)*a2 + 2*a5,a4] `shouldBe` Just [(a1,-1),(a2,0),(a3,0),(a4,0),(a5,0),(a6,0),(a7,0),(a8,0),(a9,0)]
+
+    it "underdetermined system (2 equations, 3 variables) returns Nothing" $ do
+      -- x + y + z = 1, x - y = 3 has infinitely many solutions for z
+      linsolve [x+y+z=:1,x-y=:3] `shouldBe` Nothing
+
+    it "CV variables are NOT treated as unknowns (correct behavior)" $ do
+      -- CV represents constants in pattern matching, not unknowns
+      let [a0,a1,a2] = map CV ["a0","a1","a2"]
+      let eqs = [a1, 2*a2, a0 + a1 =: (-1)]
+      linsolve eqs `shouldBe` Just []  -- No V variables, so empty solution
+
+    it "V variables are treated as unknowns" $ do
+      -- After converting CV to V, linsolve should work
+      let [a0,a1,a2] = map V ["a0","a1","a2"]
+      let eqs = [a1, 2*a2, a0 + a1 =: (-1)]
+      linsolve eqs `shouldBe` Just [(a0,-1),(a1,0),(a2,0)]

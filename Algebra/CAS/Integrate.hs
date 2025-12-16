@@ -43,6 +43,13 @@ integrate f v = integrateFormula f v
     integrateFormula (S (Cos f')) var
       | f' == var = S (Sin var)
 
+    -- Special case: sin(x)*cos(x) using substitution u=sin(x), du=cos(x)dx
+    -- ∫sin(x)cos(x)dx = ∫u du = u²/2 = sin²(x)/2
+    integrateFormula (S (Sin f') :*: S (Cos f'')) var
+      | f' == var && f'' == var = (S (Sin var) ** 2) / 2
+    integrateFormula (S (Cos f') :*: S (Sin f'')) var
+      | f' == var && f'' == var = (S (Sin var) ** 2) / 2
+
     -- Division: check for 1/x or rational functions
     integrateFormula f'@(_ :/: _) var =
       let n = numer f'
@@ -170,8 +177,25 @@ quotRemPoly a b x = reduction a b -- Reuse existing reduction which is multivari
 -- This implementation generates a candidate polynomial based on the variables
 -- and derivatives found in the integrand, differentiates it, and solves the
 -- resulting linear system to find the coefficients.
+-- Includes preprocessing for special cases that can be simplified before applying the heuristic.
 rischNorman' :: Formula -> Formula -> Formula
 rischNorman' f x =
+  -- Preprocess: check for special patterns that should be simplified first
+  case preprocessIntegrand f x of
+    Just result -> result
+    Nothing -> rischNormanCore f x
+  where
+    -- Preprocessing: handle special cases
+    preprocessIntegrand :: Formula -> Formula -> Maybe Formula
+    preprocessIntegrand (S (Sin f') :*: S (Cos f'')) var
+      | f' == var && f'' == var = Just $ (S (Sin var) ** 2) / 2
+    preprocessIntegrand (S (Cos f') :*: S (Sin f'')) var
+      | f' == var && f'' == var = Just $ (S (Sin var) ** 2) / 2
+    preprocessIntegrand _ _ = Nothing
+
+-- | Core Risch-Norman algorithm
+rischNormanCore :: Formula -> Formula -> Formula
+rischNormanCore f x =
   case solvedCoeffs of
     Just sol -> simplifyResult $ subst (convertSolution sol) candidate
     Nothing  -> error $ "integrate // Risch-Norman heuristic failed for: " ++ show f
