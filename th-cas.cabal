@@ -1,3 +1,4 @@
+cabal-version: 3.0
 name:                th-cas
 version:             0.2.0
 synopsis:            Compile-time CAS(Computer Algebra System)
@@ -10,7 +11,6 @@ maintainer:          junji.hashimoto@gmail.com
 -- copyright:           
 category:            Math, Numeric
 build-type:          Simple
-cabal-version:       >=1.18
 extra-source-files:  ChangeLog.md
                    , README.md
 
